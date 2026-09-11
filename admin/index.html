@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Faith Hair - Administration</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css" />
+</head>
+<body>
+  <!-- CONNEXION -->
+  <div id="login" class="wrap">
+    <div class="brand-header"><img src="../assets/images/logo.png" alt="Faith Hair" /></div>
+    <div class="card">
+      <h2>Espace administrateur</h2>
+      <label class="field" for="pwd">Mot de passe</label>
+      <input type="password" id="pwd" placeholder="Mot de passe" />
+      <button class="btn btn-block mt" id="btn-login">Entrer</button>
+      <p class="hint" id="login-err" style="color:var(--alerte)"></p>
+    </div>
+  </div>
+
+  <!-- APPLICATION -->
+  <div id="app" class="hidden">
+    <div class="topbar">
+      <span class="logo">Faith Hair</span>
+      <button class="btn btn-ghost btn-sm" id="btn-logout" style="color:#fff;border-color:rgba(255,255,255,.4)">Deconnexion</button>
+    </div>
+    <div class="wrap wrap-lg">
+      <div class="tabs">
+        <button class="tab active" data-tab="crm">Reservations</button>
+        <button class="tab" data-tab="planning">Planning</button>
+        <button class="tab" data-tab="prestations">Prestations</button>
+        <button class="tab" data-tab="reglages">Reglages</button>
+      </div>
+
+      <!-- ONGLET CRM -->
+      <section id="tab-crm" class="tabpane">
+        <div class="subtabs">
+          <button class="subtab active" data-statut="en_attente">En attente</button>
+          <button class="subtab" data-statut="confirme">Confirme</button>
+          <button class="subtab" data-statut="archive">Archive</button>
+          <button class="subtab" data-statut="corbeille">Corbeille</button>
+        </div>
+        <div id="bulk-bar" class="bulk-bar hidden">
+          <span id="bulk-count">0 selectionne(s)</span>
+          <span id="bulk-actions"></span>
+        </div>
+        <div id="crm-list"></div>
+      </section>
+
+      <!-- ONGLET PLANNING -->
+      <section id="tab-planning" class="tabpane hidden">
+        <div class="btn-row mb">
+          <button class="btn" id="btn-dispos">Mes dispos</button>
+          <button class="btn btn-ghost" id="view-jour">Jour</button>
+          <button class="btn btn-ghost" id="view-semaine">Semaine</button>
+        </div>
+        <div id="planning-nav" class="btn-row mb"></div>
+        <div id="planning-content"></div>
+      </section>
+
+      <!-- ONGLET PRESTATIONS -->
+      <section id="tab-prestations" class="tabpane hidden">
+        <div class="btn-row mb">
+          <button class="btn" id="btn-add-presta">+ Ajouter une prestation</button>
+        </div>
+        <div id="presta-list"></div>
+      </section>
+
+      <!-- ONGLET REGLAGES -->
+      <section id="tab-reglages" class="tabpane hidden">
+        <div class="card">
+          <h2>Supplements et battement</h2>
+          <p class="muted small">Ces valeurs alimentent le questionnaire et le calcul des durees.</p>
+          <div id="reglages-form"></div>
+          <button class="btn mt" id="btn-save-reglages">Enregistrer</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Conteneur de modales -->
+  <div id="modal-root"></div>
+  <div id="toast" class="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/core.js"></script>
+  <script src="../assets/js/admin.js"></script>
+</body>
+</html>

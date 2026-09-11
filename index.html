@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Faith Hair - Reservation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand-header">
+      <img src="assets/images/logo.png" alt="Faith Hair" />
+    </div>
+
+    <!-- ETAPE 0 : INTRODUCTION -->
+    <section id="page-intro" class="card">
+      <h1>Prendre rendez-vous</h1>
+      <p>Bienvenue chez Faith Hair. Pour faciliter votre prise de rendez-vous, ce court questionnaire vous permet de choisir votre prestation, un creneau, et d'obtenir une estimation du cout.</p>
+      <p class="muted small">A la fin, il vous suffira d'envoyer un message pre-rempli sur Instagram. Nous reviendrons vers vous avec le lien pour l'acompte de 10&euro; qui confirme definitivement votre rendez-vous.</p>
+      <button class="btn btn-block mt" id="btn-start">Commencer</button>
+    </section>
+
+    <!-- STEPPER (etapes 1 a 4) -->
+    <div id="stepper" class="stepper hidden">
+      <div class="step" data-step="1"><div class="dot">1</div><div class="lbl">Prestation</div></div>
+      <div class="step" data-step="2"><div class="dot">2</div><div class="lbl">Creneau</div></div>
+      <div class="step" data-step="3"><div class="dot">3</div><div class="lbl">Coordonnees</div></div>
+      <div class="step" data-step="4"><div class="dot">4</div><div class="lbl">Recap</div></div>
+    </div>
+
+    <!-- ETAPE 1 : PRESTATION -->
+    <section id="page-presta" class="card hidden">
+      <h2>Votre prestation</h2>
+
+      <div class="accordion">
+        <!-- Mèches -->
+        <div class="accordion-item" data-acc="meches">
+          <div class="accordion-head">
+            <span>Avec ou sans meches <span class="val" data-val="meches"></span></span>
+            <span class="chev">&#9662;</span>
+          </div>
+          <div class="accordion-body">
+            <div class="choice-grid cols-2">
+              <div class="choice" data-meches="true">
+                <div class="titre">Avec meches</div>
+                <div class="sup">Couleur a preciser en DM</div>
+              </div>
+              <div class="choice" data-meches="false">
+                <div class="titre">Sans meches</div>
+                <div class="sup">Cheveux naturels</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Taille -->
+        <div class="accordion-item" data-acc="taille">
+          <div class="accordion-head">
+            <span>Taille de tresse <span class="val" data-val="taille"></span></span>
+            <span class="chev">&#9662;</span>
+          </div>
+          <div class="accordion-body">
+            <div class="choice-grid cols-3">
+              <div class="choice" data-taille="gros">
+                <img src="assets/images/parting-gros.jpeg" alt="Gros" />
+                <div class="titre">Gros</div>
+              </div>
+              <div class="choice" data-taille="moyen">
+                <img src="assets/images/parting-medium.jpeg" alt="Moyen" />
+                <div class="titre">Moyen</div>
+                <div class="sup" data-sup="taille-moyen"></div>
+              </div>
+              <div class="choice" data-taille="petit">
+                <img src="assets/images/parting-small.jpeg" alt="Petit" />
+                <div class="titre">Petit</div>
+                <div class="sup" data-sup="taille-petit"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Longueur -->
+        <div class="accordion-item" data-acc="longueur">
+          <div class="accordion-head">
+            <span>Longueur souhaitee <span class="val" data-val="longueur"></span></span>
+            <span class="chev">&#9662;</span>
+          </div>
+          <div class="accordion-body">
+            <div class="choice-grid cols-3">
+              <div class="choice" data-longueur="court">
+                <img src="assets/images/longueur-court.jpeg" alt="Court" />
+                <div class="titre">Court</div>
+              </div>
+              <div class="choice" data-longueur="moyen">
+                <img src="assets/images/longueur-milong.jpeg" alt="Moyen" />
+                <div class="titre">Moyen</div>
+              </div>
+              <div class="choice" data-longueur="long">
+                <img src="assets/images/longueur-long.jpeg" alt="Long" />
+                <div class="titre">Long</div>
+                <div class="sup" data-sup="longueur-long"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modèle -->
+        <div class="accordion-item" data-acc="modele">
+          <div class="accordion-head">
+            <span>Modele <span class="val" data-val="modele"></span></span>
+            <span class="chev">&#9662;</span>
+          </div>
+          <div class="accordion-body">
+            <p class="hint" id="modele-hint">Choisissez d'abord avec ou sans meches.</p>
+            <select id="select-modele" disabled>
+              <option value="">Selectionnez un modele</option>
+            </select>
+            <div id="commentaire-wrap" class="hidden">
+              <label class="field" for="commentaire">Commentaire</label>
+              <textarea id="commentaire" placeholder="Decrivez la coiffure souhaitee. Vous pourrez envoyer des images de reference en DM."></textarea>
+              <p class="hint">Pour le modele "Autre", le tarif vous sera communique en DM.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Estimation -->
+      <div id="estimate-box" class="estimate mt hidden">
+        <div>
+          <div class="lbl">Estimation du cout</div>
+          <div class="muted small" style="opacity:.8">Confirmee en DM</div>
+        </div>
+        <div class="montant" id="estimate-montant">-</div>
+      </div>
+
+      <button class="btn btn-block mt" id="btn-to-creneau" disabled>Continuer</button>
+    </section>
+
+    <!-- ETAPE 2 : CRENEAU -->
+    <section id="page-creneau" class="card hidden">
+      <h2>Choisir un creneau</h2>
+      <label class="field" for="date-rdv">Date souhaitee</label>
+      <input type="date" id="date-rdv" />
+      <div id="slots-zone" class="mt">
+        <p class="hint">Selectionnez une date pour voir les creneaux disponibles.</p>
+      </div>
+      <div class="btn-row mt">
+        <button class="btn btn-ghost" id="btn-back-presta">Retour</button>
+        <button class="btn" id="btn-to-coord" disabled style="flex:1">Continuer</button>
+      </div>
+    </section>
+
+    <!-- ETAPE 3 : COORDONNEES -->
+    <section id="page-coord" class="card hidden">
+      <h2>Vos coordonnees</h2>
+      <label class="field" for="prenom">Prenom</label>
+      <input type="text" id="prenom" placeholder="Votre prenom" />
+
+      <label class="field" for="insta">Instagram</label>
+      <input type="text" id="insta" placeholder="votre_pseudo" />
+      <p class="hint">Ecrivez votre pseudo exact, avec les _ / - s'il y en a.</p>
+
+      <label class="field" for="tel">Numero de telephone</label>
+      <input type="tel" id="tel" placeholder="+33 6 12 34 56 78" value="+33" />
+
+      <div class="btn-row mt">
+        <button class="btn btn-ghost" id="btn-back-creneau">Retour</button>
+        <button class="btn" id="btn-to-recap" style="flex:1">Continuer</button>
+      </div>
+    </section>
+
+    <!-- ETAPE 4 : RECAP -->
+    <section id="page-recap" class="card hidden">
+      <h2>Recapitulatif</h2>
+      <div id="recap-content"></div>
+      <div class="btn-row mt">
+        <button class="btn btn-ghost" id="btn-back-coord">Retour</button>
+        <button class="btn" id="btn-valider" style="flex:1">Valider ma demande</button>
+      </div>
+    </section>
+
+    <!-- ETAPE 5 : CONFIRMATION -->
+    <section id="page-confirm" class="card hidden">
+      <h2>Votre reservation est prise en compte</h2>
+      <p>Elle ne sera definitivement confirmee qu'au versement de l'acompte de 10&euro;.</p>
+      <p class="muted small">Pour faciliter le traitement de votre demande, merci d'envoyer le message ci-dessous sur notre compte Instagram.</p>
+      <div class="msg-box mt" id="msg-insta"></div>
+      <div class="btn-row mt">
+        <button class="btn" id="btn-copy" style="flex:1">Copier le message</button>
+        <a class="btn btn-ghost" id="btn-insta" href="#" target="_blank" rel="noopener">Ouvrir Instagram</a>
+      </div>
+      <p class="center muted small mt">Compte : @<span id="insta-handle"></span></p>
+    </section>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/core.js"></script>
+  <script src="assets/js/client.js"></script>
+</body>
+</html>
