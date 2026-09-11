@@ -460,7 +460,7 @@
           '<strong>' + esc(r.libelle || d.cle) + '</strong>' +
           '<div style="display:flex;gap:10px;margin-top:6px">' +
           (d.prix ? '<div style="flex:1"><label class="field">Supplement prix (&euro;)</label><input type="number" step="0.5" data-cle="' + d.cle + '" data-champ="prix" value="' + (r.supplement_prix != null ? r.supplement_prix : '') + '" /></div>' : '') +
-          '<div style="flex:1"><label class="field">Supplement duree (min)</label><input type="number" data-cle="' + d.cle + '" data-champ="min" value="' + (r.supplement_min != null ? r.supplement_min : 0) + '" /></div>' +
+          '<div style="flex:1"><label class="field">Duree sup (min)</label><input type="number" data-cle="' + d.cle + '" data-champ="min" value="' + (r.supplement_min != null ? r.supplement_min : 0) + '" /></div>' +
           '</div></div>';
       }).join('') +
       '</div>' +
