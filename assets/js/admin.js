@@ -458,9 +458,9 @@
         const r = reglages[d.cle] || {};
         return '<div style="border-bottom:1px solid var(--gris-rose);padding:10px 0">' +
           '<strong>' + esc(r.libelle || d.cle) + '</strong>' +
-          '<div style="display:flex;gap:10px;margin-top:6px">' +
+          '<div style="display:flex;gap:10px;margin-top:6px;align-items:flex-end">' +
           (d.prix ? '<div style="flex:1"><label class="field">Supplement prix (&euro;)</label><input type="number" step="0.5" data-cle="' + d.cle + '" data-champ="prix" value="' + (r.supplement_prix != null ? r.supplement_prix : '') + '" /></div>' : '') +
-          '<div style="flex:1"><label class="field">Duree sup (min)</label><input type="number" data-cle="' + d.cle + '" data-champ="min" value="' + (r.supplement_min != null ? r.supplement_min : 0) + '" /></div>' +
+          '<div style="flex:1"><label class="field">Duree sup</label><input type="number" data-cle="' + d.cle + '" data-champ="min" value="' + (r.supplement_min != null ? r.supplement_min : 0) + '" /></div>' +
           '</div></div>';
       }).join('') +
       '</div>' +
@@ -581,10 +581,12 @@
       '<div id="wk-days"></div>' +
       '<button class="btn btn-block mt" id="wk-save">Enregistrer cette semaine</button>' +
       '<hr style="border:none;border-top:1px dashed var(--gris-rose);margin:22px 0" />' +
-      '<h3>Horaires par defaut</h3>' +
+      '<h3 id="def-toggle" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center">Horaires par defaut <span class="chev">&#9662;</span></h3>' +
+      '<div id="def-section" class="hidden">' +
       '<p class="muted small">Gabarit applique aux semaines non personnalisees.</p>' +
       '<div id="def-days"></div>' +
-      '<button class="btn btn-ghost btn-block mt" id="def-save">Enregistrer les horaires par defaut</button>';
+      '<button class="btn btn-ghost btn-block mt" id="def-save">Enregistrer les horaires par defaut</button>' +
+      '</div>';
     const modal = ouvrirModal(body);
 
     function weekDates(off) {
@@ -659,6 +661,10 @@
       }
       toast('Horaires par defaut enregistres.');
       renderWeek();
+    });
+
+    $('#def-toggle', body).addEventListener('click', function () {
+      $('#def-section', body).classList.toggle('hidden');
     });
 
     renderWeek();
