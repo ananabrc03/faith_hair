@@ -618,6 +618,7 @@
       '<div id="wk-nav" style="display:flex;align-items:center;justify-content:space-between;margin:10px 0"></div>' +
       '<div id="wk-days"></div>' +
       '<button class="btn btn-block mt" id="wk-save">Enregistrer cette semaine</button>' +
+      '<button class="btn btn-ghost btn-block mt" id="wk-reset">Reinitialiser cette semaine (horaires par defaut)</button>' +
       '<hr style="border:none;border-top:1px dashed var(--gris-rose);margin:22px 0" />' +
       '<h3 id="def-toggle" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center">Horaires par defaut <span class="chev">&#9662;</span></h3>' +
       '<div id="def-section" class="hidden">' +
@@ -686,6 +687,16 @@
         if (!error && data) excMap[d] = data;
       }
       toast('Semaine enregistree.');
+      renderWeek();
+    });
+
+    $('#wk-reset', body).addEventListener('click', async function () {
+      const dates = weekDates(weekOffset);
+      for (let i = 0; i < 7; i++) {
+        const d = dates[i];
+        if (excMap[d]) { await sb.from('exceptions_dispo').delete().eq('date', d); delete excMap[d]; }
+      }
+      toast('Semaine reinitialisee sur les horaires par defaut.');
       renderWeek();
     });
 
