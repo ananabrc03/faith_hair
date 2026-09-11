@@ -509,8 +509,9 @@
     }
   }
   function boutonNav(html, fn) { const b = document.createElement('button'); b.className = 'btn btn-ghost btn-sm'; b.innerHTML = html; b.addEventListener('click', fn); return b; }
-  function decalerJour(dateStr, n) { const d = new Date(dateStr + 'T00:00:00'); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
-  function lundiDeLaSemaine(dateStr) { const d = new Date(dateStr + 'T00:00:00'); const off = (d.getDay() + 6) % 7; d.setDate(d.getDate() - off); return d.toISOString().slice(0, 10); }
+  function ymdLocal(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function decalerJour(dateStr, n) { const d = new Date(dateStr + 'T00:00:00'); d.setDate(d.getDate() + n); return ymdLocal(d); }
+  function lundiDeLaSemaine(dateStr) { const d = new Date(dateStr + 'T00:00:00'); const off = (d.getDay() + 6) % 7; d.setDate(d.getDate() - off); return ymdLocal(d); }
 
   async function rdvDuJour(dateStr) {
     const { data } = await sb.from('reservations').select('*')
