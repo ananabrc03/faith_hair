@@ -428,8 +428,9 @@
     });
   }
 
-  function modalPrestation(p) {
-    const est = p || { nom: '', descriptif: '', prix_base: 0, duree_base_min: 120, duree_max_min: 240, prix_fixe: false, actif: true, ordre: 0 };
+  async function modalPrestation(p) {
+    const opts = await C.getOptions(false);
+    const est = p || { nom: '', descriptif: '', prix_base: 0, duree_base_min: 120, duree_max_min: 240, prix_fixe: false, actif: true, options_exclues: [], ordre: 0 };
     const body = document.createElement('div');
     body.innerHTML =
       '<h2>' + (p ? 'Modifier' : 'Ajouter') + ' une prestation</h2>' +
@@ -441,12 +442,22 @@
         '<div style="flex:1"><label class="field">Duree maxi - petit (min)</label><input type="number" id="p-dureemax" value="' + (est.duree_max_min != null ? est.duree_max_min : est.duree_base_min) + '" /></div>' +
       '</div>' +
       '<label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-top:10px"><input type="checkbox" id="p-fixe" ' + (est.prix_fixe ? 'checked' : '') + ' style="width:20px;height:20px"/> Prix fixe (taille et longueur n\'ajoutent rien au prix)</label>' +
-      '<label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-top:6px"><input type="checkbox" id="p-actif" ' + (est.actif ? 'checked' : '') + ' style="width:20px;height:20px"/> Visible dans le questionnaire</label>' +
+      '<div style="border:1px solid var(--gris-rose);border-radius:12px;margin-top:12px;overflow:hidden">' +
+        '<div id="po-head" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:12px 14px;font-weight:600;color:var(--brun-fonce)">Options possibles <span class="chev">&#9662;</span></div>' +
+        '<div id="po-body" class="hidden" style="padding:0 14px 14px">' +
+        (opts.length ? opts.map(function (o) {
+          const exclu = (est.options_exclues || []).indexOf(o.id) >= 0;
+          return '<label style="display:flex;align-items:center;gap:8px;font-weight:400;padding:5px 0"><input type="checkbox" class="po-opt" data-id="' + o.id + '" ' + (exclu ? '' : 'checked') + ' style="width:20px;height:20px"/> ' + esc(o.nom) + '</label>';
+        }).join('') : '<p class="hint">Aucune option definie.</p>') +
+        '</div></div>' +
       '<button class="btn btn-block mt" id="p-save">Enregistrer</button>' +
       (p ? '<button class="btn btn-danger btn-block mt" id="p-del">Supprimer</button>' : '');
     const modal = ouvrirModal(body);
+    $('#po-head', body).addEventListener('click', function () { $('#po-body', body).classList.toggle('hidden'); });
 
     $('#p-save', body).addEventListener('click', async function () {
+      const exclues = [];
+      $$('.po-opt', body).forEach(function (cb) { if (!cb.checked) exclues.push(cb.dataset.id); });
       const patch = {
         nom: $('#p-nom', body).value.trim(),
         descriptif: $('#p-desc', body).value.trim(),
@@ -454,7 +465,8 @@
         duree_base_min: Number($('#p-duree', body).value) || 0,
         duree_max_min: Number($('#p-dureemax', body).value) || 0,
         prix_fixe: $('#p-fixe', body).checked,
-        actif: $('#p-actif', body).checked
+        options_exclues: exclues,
+        actif: true
       };
       if (!patch.nom) { toast('Le nom est requis.'); return; }
       let error;
