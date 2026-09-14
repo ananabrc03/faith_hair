@@ -79,32 +79,54 @@
   // moyen = milieu) + supplement de longueur + eventuel supplement des options.
   // Prix : prix de base + supplement taille + supplement longueur + prix des options.
   // options : tableau d'objets { cle, nom, prix, min }.
+  // Sections taille / longueur configurables par prestation
+  function tailleActive(p) { return p && p.taille_active !== false; }
+  function longueurActive(p) { return p && p.longueur_active !== false; }
+  function tailleDispo(p, taille) {
+    if (!tailleActive(p)) return false;
+    if (p.taille_mode === 'perso') { const c = (p.taille_perso || {})[taille]; return !!(c && c.dispo); }
+    return true;
+  }
+  function longueurDispo(p, longueur) {
+    if (!longueurActive(p)) return false;
+    if (p.longueur_mode === 'perso') { const c = (p.longueur_perso || {})[longueur]; return !!(c && c.dispo); }
+    return true;
+  }
+  function taillePrix(p, taille, reglages) {
+    if (!tailleActive(p) || !taille) return 0;
+    if (p.taille_mode === 'perso') { const c = (p.taille_perso || {})[taille]; return c ? Number(c.prix || 0) : 0; }
+    const r = reglages['taille_' + taille]; return r ? Number(r.supplement_prix || 0) : 0;
+  }
+  function longueurPrix(p, longueur, reglages) {
+    if (!longueurActive(p) || !longueur) return 0;
+    if (p.longueur_mode === 'perso') { const c = (p.longueur_perso || {})[longueur]; return c ? Number(c.prix || 0) : 0; }
+    const r = reglages['longueur_' + longueur]; return r ? Number(r.supplement_prix || 0) : 0;
+  }
+  function longueurDuree(longueur, reglages) { const r = reglages['longueur_' + longueur]; return r ? Number(r.supplement_min || 0) : 0; }
+
   function computeEstimate(presta, taille, longueur, options, reglages) {
     options = options || [];
     let prix = Number(presta.prix_base);
 
-    // Duree supplementaire de la longueur (s'applique meme en prix fixe)
+    // Supplement de prix taille
+    if (tailleActive(presta) && taille) prix += taillePrix(presta, taille, reglages);
+
+    // Supplement de prix + duree de la longueur (duree toujours standard)
     let dureeLongueur = 0;
-    const rl = reglages['longueur_' + longueur];
-    if (rl) dureeLongueur += Number(rl.supplement_min || 0);
+    if (longueurActive(presta) && longueur) { prix += longueurPrix(presta, longueur, reglages); dureeLongueur += longueurDuree(longueur, reglages); }
 
-    // Supplements de PRIX (taille + longueur), ignores si la prestation est a prix fixe
-    if (!presta.prix_fixe) {
-      const rt = reglages['taille_' + taille];
-      if (rt) prix += Number(rt.supplement_prix || 0);
-      if (rl) prix += Number(rl.supplement_prix || 0);
-    }
-
-    // Duree selon la fourchette et la taille
+    // Duree de base selon la fourchette et la taille (si taille inactive : duree mini)
     const dmin = Number(presta.duree_base_min || 0);
     const dmax = presta.duree_max_min != null ? Number(presta.duree_max_min) : dmin;
     let duree;
-    if (taille === 'petit') duree = dmax;
-    else if (taille === 'moyen') duree = Math.round((dmin + dmax) / 2);
-    else duree = dmin; // gros
+    if (tailleActive(presta) && taille) {
+      if (taille === 'petit') duree = dmax;
+      else if (taille === 'moyen') duree = Math.round((dmin + dmax) / 2);
+      else duree = dmin;
+    } else duree = dmin;
     duree += dureeLongueur;
 
-    // Options
+    // Supplements (melange de meches, perles...)
     options.forEach(function (o) { prix += Number(o.prix || 0); duree += Number(o.min || 0); });
 
     const battement = reglages.battement ? Number(reglages.battement.supplement_min || 0) : 0;
@@ -199,6 +221,12 @@
     getOptions: getOptions,
     // calculs
     computeEstimate: computeEstimate,
+    tailleActive: tailleActive,
+    longueurActive: longueurActive,
+    tailleDispo: tailleDispo,
+    longueurDispo: longueurDispo,
+    taillePrix: taillePrix,
+    longueurPrix: longueurPrix,
     appliquerRemise: appliquerRemise,
     horairesDuJour: horairesDuJour,
     creneauxDisponibles: creneauxDisponibles,
