@@ -418,7 +418,7 @@
       row.className = 'list-row';
       row.innerHTML =
         '<div class="info">' +
-        '<div class="nom">' + esc(p.nom) + (p.prix_fixe ? ' <span class="badge confirme">Prix fixe</span>' : '') + (p.actif ? '' : ' <span class="badge archive">Masquee</span>') + '</div>' +
+        '<div class="nom">' + esc(p.nom) + (p.longueur_active === false ? ' <span class="badge archive">taille seule</span>' : '') + '</div>' +
         '<div class="sub">' + euro(p.prix_base) + ' &middot; ' + C.minToLabel(p.duree_base_min) + ' a ' + C.minToLabel(p.duree_max_min != null ? p.duree_max_min : p.duree_base_min) + '</div>' +
         '<div class="sub" style="margin-top:4px">' + esc(p.descriptif) + '</div>' +
         '</div>' +
@@ -430,7 +430,16 @@
 
   async function modalPrestation(p) {
     const opts = await C.getOptions(false);
-    const est = p || { nom: '', descriptif: '', prix_base: 0, duree_base_min: 120, duree_max_min: 240, prix_fixe: false, actif: true, options_exclues: [], ordre: 0 };
+    const est = p || { nom: '', descriptif: '', prix_base: 0, duree_base_min: 120, duree_max_min: 240, taille_active: true, taille_mode: 'standard', taille_perso: {}, longueur_active: true, longueur_mode: 'standard', longueur_perso: {}, options_exclues: [] };
+    const tperso = est.taille_perso || {}, lperso = est.longueur_perso || {};
+    function persoRow(scope, k, label) {
+      const c = (scope === 't' ? tperso : lperso)[k] || {};
+      const dispo = c.dispo !== undefined ? c.dispo : true;
+      const prix = c.prix != null ? c.prix : 0;
+      return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0">' +
+        '<label style="flex:1;display:flex;align-items:center;gap:6px;font-weight:400"><input type="checkbox" class="' + scope + 'p-dispo" data-k="' + k + '" ' + (dispo ? 'checked' : '') + ' style="width:18px;height:18px"/> ' + label + '</label>' +
+        '<span style="display:flex;align-items:center;gap:4px"><input type="number" step="0.5" class="' + scope + 'p-prix" data-k="' + k + '" value="' + prix + '" style="width:80px"/> &euro;</span></div>';
+    }
     const body = document.createElement('div');
     body.innerHTML =
       '<h2>' + (p ? 'Modifier' : 'Ajouter') + ' une prestation</h2>' +
@@ -441,30 +450,52 @@
         '<div style="flex:1"><label class="field">Duree mini - gros (min)</label><input type="number" id="p-duree" value="' + est.duree_base_min + '" /></div>' +
         '<div style="flex:1"><label class="field">Duree maxi - petit (min)</label><input type="number" id="p-dureemax" value="' + (est.duree_max_min != null ? est.duree_max_min : est.duree_base_min) + '" /></div>' +
       '</div>' +
-      '<label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-top:10px"><input type="checkbox" id="p-fixe" ' + (est.prix_fixe ? 'checked' : '') + ' style="width:20px;height:20px"/> Prix fixe (taille et longueur n\'ajoutent rien au prix)</label>' +
-      '<div style="border:1px solid var(--gris-rose);border-radius:12px;margin-top:12px;overflow:hidden">' +
-        '<div id="po-head" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:12px 14px;font-weight:600;color:var(--brun-fonce)">Options possibles <span class="chev">&#9662;</span></div>' +
+      '<label style="display:flex;align-items:center;gap:8px;font-weight:500;margin-top:14px"><input type="checkbox" id="p-taille-active" ' + (est.taille_active !== false ? 'checked' : '') + ' style="width:20px;height:20px"/> Proposer le choix de la taille</label>' +
+      '<div id="p-taille-cfg" class="' + (est.taille_active === false ? 'hidden' : '') + '" style="padding-left:10px;margin-top:6px">' +
+        '<select id="p-taille-mode"><option value="standard"' + (est.taille_mode !== 'perso' ? ' selected' : '') + '>Prix standard</option><option value="perso"' + (est.taille_mode === 'perso' ? ' selected' : '') + '>Prix personnalise</option></select>' +
+        '<div id="p-taille-perso" class="' + (est.taille_mode === 'perso' ? '' : 'hidden') + '" style="margin-top:8px">' + persoRow('t', 'gros', 'Gros') + persoRow('t', 'moyen', 'Moyen') + persoRow('t', 'petit', 'Petit') + '</div>' +
+      '</div>' +
+      '<label style="display:flex;align-items:center;gap:8px;font-weight:500;margin-top:14px"><input type="checkbox" id="p-longueur-active" ' + (est.longueur_active !== false ? 'checked' : '') + ' style="width:20px;height:20px"/> Proposer le choix de la longueur</label>' +
+      '<div id="p-longueur-cfg" class="' + (est.longueur_active === false ? 'hidden' : '') + '" style="padding-left:10px;margin-top:6px">' +
+        '<select id="p-longueur-mode"><option value="standard"' + (est.longueur_mode !== 'perso' ? ' selected' : '') + '>Prix standard</option><option value="perso"' + (est.longueur_mode === 'perso' ? ' selected' : '') + '>Prix personnalise</option></select>' +
+        '<div id="p-longueur-perso" class="' + (est.longueur_mode === 'perso' ? '' : 'hidden') + '" style="margin-top:8px">' + persoRow('l', 'court', 'Court') + persoRow('l', 'moyen', 'Moyen') + persoRow('l', 'long', 'Long') + '</div>' +
+      '</div>' +
+      '<div style="border:1px solid var(--gris-rose);border-radius:12px;margin-top:14px;overflow:hidden">' +
+        '<div id="po-head" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:12px 14px;font-weight:600;color:var(--brun-fonce)">Supplements proposes <span class="chev">&#9662;</span></div>' +
         '<div id="po-body" class="hidden" style="padding:0 14px 14px">' +
         (opts.length ? opts.map(function (o) {
           const exclu = (est.options_exclues || []).indexOf(o.id) >= 0;
           return '<label style="display:flex;align-items:center;gap:8px;font-weight:400;padding:5px 0"><input type="checkbox" class="po-opt" data-id="' + o.id + '" ' + (exclu ? '' : 'checked') + ' style="width:20px;height:20px"/> ' + esc(o.nom) + '</label>';
-        }).join('') : '<p class="hint">Aucune option definie.</p>') +
+        }).join('') : '<p class="hint">Aucun supplement defini.</p>') +
         '</div></div>' +
       '<button class="btn btn-block mt" id="p-save">Enregistrer</button>' +
       (p ? '<button class="btn btn-danger btn-block mt" id="p-del">Supprimer</button>' : '');
     const modal = ouvrirModal(body);
     $('#po-head', body).addEventListener('click', function () { $('#po-body', body).classList.toggle('hidden'); });
+    $('#p-taille-active', body).addEventListener('change', function () { $('#p-taille-cfg', body).classList.toggle('hidden', !this.checked); });
+    $('#p-taille-mode', body).addEventListener('change', function () { $('#p-taille-perso', body).classList.toggle('hidden', this.value !== 'perso'); });
+    $('#p-longueur-active', body).addEventListener('change', function () { $('#p-longueur-cfg', body).classList.toggle('hidden', !this.checked); });
+    $('#p-longueur-mode', body).addEventListener('change', function () { $('#p-longueur-perso', body).classList.toggle('hidden', this.value !== 'perso'); });
+
+    function buildPerso(scope) {
+      const obj = {}; const keys = scope === 't' ? ['gros', 'moyen', 'petit'] : ['court', 'moyen', 'long'];
+      keys.forEach(function (k) { obj[k] = { dispo: $('.' + scope + 'p-dispo[data-k="' + k + '"]', body).checked, prix: Number($('.' + scope + 'p-prix[data-k="' + k + '"]', body).value) || 0 }; });
+      return obj;
+    }
 
     $('#p-save', body).addEventListener('click', async function () {
       const exclues = [];
       $$('.po-opt', body).forEach(function (cb) { if (!cb.checked) exclues.push(cb.dataset.id); });
+      const tActive = $('#p-taille-active', body).checked, tMode = $('#p-taille-mode', body).value;
+      const lActive = $('#p-longueur-active', body).checked, lMode = $('#p-longueur-mode', body).value;
       const patch = {
         nom: $('#p-nom', body).value.trim(),
         descriptif: $('#p-desc', body).value.trim(),
         prix_base: Number($('#p-prix', body).value) || 0,
         duree_base_min: Number($('#p-duree', body).value) || 0,
         duree_max_min: Number($('#p-dureemax', body).value) || 0,
-        prix_fixe: $('#p-fixe', body).checked,
+        taille_active: tActive, taille_mode: tMode, taille_perso: (tActive && tMode === 'perso') ? buildPerso('t') : {},
+        longueur_active: lActive, longueur_mode: lMode, longueur_perso: (lActive && lMode === 'perso') ? buildPerso('l') : {},
         options_exclues: exclues,
         actif: true
       };
@@ -523,16 +554,16 @@
         rgTexte('intro_titre', 'Titre', false) +
         rgTexte('intro_principal', 'Texte principal', true) +
         rgTexte('intro_secondaire', 'Texte secondaire', true)) +
-      rgSection('taille', 'Option taille de tresse',
+      rgSection('taille', 'Option taille de tresse standard',
         rgPrix('taille_gros', 'Gros') + rgPrix('taille_moyen', 'Moyen') + rgPrix('taille_petit', 'Petit')) +
-      rgSection('longueur', 'Option longueur',
+      rgSection('longueur', 'Option longueur standard',
         rgPrixDuree('longueur_court', 'Court') + rgPrixDuree('longueur_moyen', 'Moyen') + rgPrixDuree('longueur_long', 'Long')) +
       rgSection('battement', 'Battement entre deux rendez-vous',
         '<label class="field">Duree (min)</label><input type="number" data-cle="battement" data-champ="min" value="' + (reglages.battement ? (reglages.battement.supplement_min != null ? reglages.battement.supplement_min : 0) : 30) + '" />') +
       rgSection('visibilite', 'Visibilite des creneaux (cliente)',
         '<label class="field">Nombre de semaines affichees a la cliente</label><input type="number" min="1" max="12" data-cle="visibilite_semaines" data-champ="min" value="' + (reglages.visibilite_semaines ? (reglages.visibilite_semaines.supplement_min != null ? reglages.visibilite_semaines.supplement_min : 2) : 2) + '" />') +
-      rgSection('options', 'Options (melange de meches, perles...)',
-        '<div id="rg-options-list"></div><button class="btn btn-ghost btn-block mt" id="rg-add-option">+ Ajouter une option</button>') +
+      rgSection('options', 'Supplements (melange de meches, perles...)',
+        '<div id="rg-options-list"></div><button class="btn btn-ghost btn-block mt" id="rg-add-option">+ Ajouter un supplement</button>') +
       '<button class="btn btn-block mt" id="rg-save">Enregistrer</button>';
     const modal = ouvrirModal(body);
 
@@ -584,7 +615,7 @@
     const est = o || { nom: '', prix_gros: '', prix_moyen: '', prix_petit: '', duree_min: 0, actif: true };
     const body = document.createElement('div');
     body.innerHTML =
-      '<h2>' + (o ? 'Modifier' : 'Ajouter') + ' une option</h2>' +
+      '<h2>' + (o ? 'Modifier' : 'Ajouter') + ' un supplement</h2>' +
       '<label class="field">Nom</label><input type="text" id="op-nom" value="' + esc(est.nom) + '" />' +
       '<p class="hint">Prix par taille. Laissez vide si l\'option n\'est pas disponible pour cette taille.</p>' +
       '<div style="display:flex;gap:8px">' +
@@ -605,14 +636,14 @@
       if (o) { ({ error } = await sb.from('options').update(patch).eq('id', o.id)); }
       else { ({ error } = await sb.from('options').insert(patch)); }
       if (error) { console.error(error); toast('Erreur.'); return; }
-      toast('Option enregistree.'); fermerModal(modal); if (onDone) onDone();
+      toast('Supplement enregistre.'); fermerModal(modal); if (onDone) onDone();
     });
     if (o) {
       $('#op-del', body).addEventListener('click', async function () {
-        if (!confirm('Supprimer cette option ?')) return;
+        if (!confirm('Supprimer ce supplement ?')) return;
         const { error } = await sb.from('options').delete().eq('id', o.id);
         if (error) { console.error(error); toast('Erreur.'); return; }
-        toast('Option supprimee.'); fermerModal(modal); if (onDone) onDone();
+        toast('Supplement supprime.'); fermerModal(modal); if (onDone) onDone();
       });
     }
   }
@@ -832,7 +863,7 @@
         '<div style="flex:1"><label class="field">Taille</label><select id="nr-taille"><option value="gros">Gros</option><option value="moyen">Moyen</option><option value="petit">Petit</option></select></div>' +
         '<div style="flex:1"><label class="field">Longueur</label><select id="nr-longueur"><option value="court">Court</option><option value="moyen">Moyen</option><option value="long">Long</option></select></div>' +
       '</div>' +
-      '<label class="field">Options</label><div id="nr-options"></div>' +
+      '<label class="field">Supplements</label><div id="nr-options"></div>' +
       '<div style="display:flex;gap:10px">' +
         '<div style="flex:1"><label class="field">Date</label><input type="date" id="nr-date" min="' + C.todayISO() + '" /></div>' +
         '<div style="flex:1"><label class="field">Heure</label><input type="time" id="nr-heure" /></div>' +
