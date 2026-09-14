@@ -65,6 +65,13 @@
     if (error) throw error;
     return data;
   }
+  async function getOptions(actifsSeulement) {
+    let q = sb.from('options').select('*').order('ordre', { ascending: true });
+    if (actifsSeulement) q = q.eq('actif', true);
+    const { data, error } = await q;
+    if (error) throw error;
+    return data;
+  }
 
   // ---------- Calcul prix / duree ----------
   // Renvoie { prix, duree, bloc } a partir d'une prestation, des choix et des options.
@@ -76,14 +83,17 @@
     options = options || [];
     let prix = Number(presta.prix_base);
 
-    // Supplement prix de la taille
-    const rt = reglages['taille_' + taille];
-    if (rt) prix += Number(rt.supplement_prix || 0);
-
-    // Supplement prix + duree de la longueur
+    // Duree supplementaire de la longueur (s'applique meme en prix fixe)
     let dureeLongueur = 0;
     const rl = reglages['longueur_' + longueur];
-    if (rl) { prix += Number(rl.supplement_prix || 0); dureeLongueur += Number(rl.supplement_min || 0); }
+    if (rl) dureeLongueur += Number(rl.supplement_min || 0);
+
+    // Supplements de PRIX (taille + longueur), ignores si la prestation est a prix fixe
+    if (!presta.prix_fixe) {
+      const rt = reglages['taille_' + taille];
+      if (rt) prix += Number(rt.supplement_prix || 0);
+      if (rl) prix += Number(rl.supplement_prix || 0);
+    }
 
     // Duree selon la fourchette et la taille
     const dmin = Number(presta.duree_base_min || 0);
@@ -186,6 +196,7 @@
     getReglages: getReglages,
     getHoraires: getHoraires,
     getExceptions: getExceptions,
+    getOptions: getOptions,
     // calculs
     computeEstimate: computeEstimate,
     appliquerRemise: appliquerRemise,
