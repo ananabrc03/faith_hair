@@ -93,11 +93,19 @@
 
   // ---------- Options (selon la taille) ----------
   function optionPrix(o, taille) { const v = o['prix_' + taille]; return v == null ? null : Number(v); }
+  function excluModele() {
+    const set = {};
+    if (state.estAutre || !state.prestationId) return set;
+    const p = prestations.find(function (x) { return x.id === state.prestationId; });
+    ((p && p.options_exclues) || []).forEach(function (id) { set[id] = true; });
+    return set;
+  }
   function reconcileOptions() {
-    // garder seulement les options disponibles pour la taille et mettre a jour leur prix
+    // garder seulement les options autorisees par le modele et disponibles pour la taille
+    const exclu = excluModele();
     state.options = state.options.map(function (x) {
       const o = optionsList.find(function (y) { return y.id === x.id; });
-      if (!o) return null;
+      if (!o || exclu[o.id]) return null;
       const prix = optionPrix(o, state.taille);
       if (prix == null) return null;
       return { id: o.id, nom: o.nom, prix: prix, min: Number(o.duree_min || 0) };
@@ -106,7 +114,8 @@
   function renderOptions() {
     const wrap = $('#options-wrap'); if (!wrap) return;
     if (!state.taille) { wrap.innerHTML = '<p class="hint">Choisissez d\'abord la taille de tresse.</p>'; return; }
-    const dispo = optionsList.filter(function (o) { return optionPrix(o, state.taille) != null; });
+    const exclu = excluModele();
+    const dispo = optionsList.filter(function (o) { return !exclu[o.id] && optionPrix(o, state.taille) != null; });
     if (!dispo.length) { wrap.innerHTML = '<p class="hint">Aucune option pour cette taille.</p>'; return; }
     wrap.innerHTML = '';
     dispo.forEach(function (o) {
@@ -302,6 +311,7 @@
       else if (v) { state.estAutre = false; state.prestationId = v; $('#commentaire-wrap').classList.add('hidden'); }
       else { state.estAutre = false; state.prestationId = null; }
       majSupplementsAffichage();
+      reconcileOptions(); renderOptions();
       recalcEstimate();
     });
     $('#commentaire').addEventListener('input', function () { state.commentaire = this.value; majBoutonPresta(); });
