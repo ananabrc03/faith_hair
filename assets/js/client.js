@@ -60,6 +60,18 @@
     const p = $('[data-sup="taille-petit"]'); if (p) p.textContent = supPrix('taille_petit');
     const l = $('[data-sup="longueur-long"]'); if (l) l.textContent = supPrix('longueur_long');
   }
+  function estFixe() {
+    if (state.estAutre || !state.prestationId) return false;
+    const p = prestations.find(function (x) { return x.id === state.prestationId; });
+    return !!(p && p.prix_fixe);
+  }
+  function majSupplementsAffichage() {
+    if (estFixe()) {
+      ['taille-moyen', 'taille-petit', 'longueur-long'].forEach(function (k) { const el = $('[data-sup="' + k + '"]'); if (el) el.textContent = ''; });
+    } else {
+      injecterSupplements();
+    }
+  }
   function injecterIntro() {
     if (reglages.intro_titre && reglages.intro_titre.valeur_texte) $('#intro-titre').textContent = reglages.intro_titre.valeur_texte;
     if (reglages.intro_principal && reglages.intro_principal.valeur_texte) $('#intro-principal').textContent = reglages.intro_principal.valeur_texte;
@@ -289,6 +301,7 @@
       if (v === '__autre__') { state.estAutre = true; state.prestationId = null; $('#commentaire-wrap').classList.remove('hidden'); }
       else if (v) { state.estAutre = false; state.prestationId = v; $('#commentaire-wrap').classList.add('hidden'); }
       else { state.estAutre = false; state.prestationId = null; }
+      majSupplementsAffichage();
       recalcEstimate();
     });
     $('#commentaire').addEventListener('input', function () { state.commentaire = this.value; majBoutonPresta(); });
