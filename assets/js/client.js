@@ -46,31 +46,41 @@
     try {
       const res = await Promise.all([C.getPrestations(true), C.getReglages(), C.getOptions(true)]);
       prestations = res[0]; reglages = res[1]; optionsList = res[2];
-      injecterSupplements();
       injecterIntro();
       remplirModeles();
+      majSectionsPrestation();
       renderOptions();
     } catch (e) { console.error(e); toast('Erreur de chargement, reessayez.'); }
     bindEvents();
   }
 
-  function supPrix(cle) { const r = reglages[cle]; return r && r.supplement_prix ? '+' + Number(r.supplement_prix) + '€' : ''; }
-  function injecterSupplements() {
-    const m = $('[data-sup="taille-moyen"]'); if (m) m.textContent = supPrix('taille_moyen');
-    const p = $('[data-sup="taille-petit"]'); if (p) p.textContent = supPrix('taille_petit');
-    const l = $('[data-sup="longueur-long"]'); if (l) l.textContent = supPrix('longueur_long');
-  }
-  function estFixe() {
-    if (state.estAutre || !state.prestationId) return false;
-    const p = prestations.find(function (x) { return x.id === state.prestationId; });
-    return !!(p && p.prix_fixe);
-  }
-  function majSupplementsAffichage() {
-    if (estFixe()) {
-      ['taille-moyen', 'taille-petit', 'longueur-long'].forEach(function (k) { const el = $('[data-sup="' + k + '"]'); if (el) el.textContent = ''; });
-    } else {
-      injecterSupplements();
-    }
+  function prestaCourante() { return (!state.estAutre && state.prestationId) ? prestations.find(function (x) { return x.id === state.prestationId; }) : null; }
+  function fmtSup(prix) { return prix > 0 ? '+' + prix + '€' : ''; }
+  function stdTaillePrix(k) { return reglages['taille_' + k] ? Number(reglages['taille_' + k].supplement_prix || 0) : 0; }
+  function stdLongueurPrix(k) { return reglages['longueur_' + k] ? Number(reglages['longueur_' + k].supplement_prix || 0) : 0; }
+
+  // Affiche/masque les sections taille et longueur et leurs prix selon la prestation
+  function majSectionsPrestation() {
+    const p = prestaCourante();
+    const tActive = p ? C.tailleActive(p) : true;
+    $('#bloc-taille').classList.toggle('hidden', !tActive);
+    ['gros', 'moyen', 'petit'].forEach(function (k) {
+      const choice = $('.choice[data-taille="' + k + '"]'); if (!choice) return;
+      const dispo = p ? C.tailleDispo(p, k) : true;
+      choice.classList.toggle('hidden', tActive ? !dispo : true);
+      const sup = choice.querySelector('.sup'); if (sup) sup.textContent = fmtSup(p ? C.taillePrix(p, k, reglages) : stdTaillePrix(k));
+    });
+    if (!tActive || (state.taille && p && !C.tailleDispo(p, state.taille))) { state.taille = null; $$('.choice[data-taille]').forEach(function (x) { x.classList.remove('selected'); }); }
+
+    const lActive = p ? C.longueurActive(p) : true;
+    $('#bloc-longueur').classList.toggle('hidden', !lActive);
+    ['court', 'moyen', 'long'].forEach(function (k) {
+      const choice = $('.choice[data-longueur="' + k + '"]'); if (!choice) return;
+      const dispo = p ? C.longueurDispo(p, k) : true;
+      choice.classList.toggle('hidden', lActive ? !dispo : true);
+      const sup = choice.querySelector('.sup'); if (sup) sup.textContent = fmtSup(p ? C.longueurPrix(p, k, reglages) : stdLongueurPrix(k));
+    });
+    if (!lActive || (state.longueur && p && !C.longueurDispo(p, state.longueur))) { state.longueur = null; $$('.choice[data-longueur]').forEach(function (x) { x.classList.remove('selected'); }); }
   }
   function injecterIntro() {
     if (reglages.intro_titre && reglages.intro_titre.valeur_texte) $('#intro-titre').textContent = reglages.intro_titre.valeur_texte;
@@ -79,13 +89,18 @@
   }
 
   // ---------- Modeles (toutes les prestations actives) ----------
+  function prixVariable(p) {
+    if (C.tailleActive(p) && ['gros', 'moyen', 'petit'].some(function (k) { return C.tailleDispo(p, k) && C.taillePrix(p, k, reglages) > 0; })) return true;
+    if (C.longueurActive(p) && ['court', 'moyen', 'long'].some(function (k) { return C.longueurDispo(p, k) && C.longueurPrix(p, k, reglages) > 0; })) return true;
+    return false;
+  }
   function remplirModeles() {
     const sel = $('#select-modele');
     sel.innerHTML = '<option value="">Selectionnez un modele</option>';
     prestations.forEach(function (p) {
       const opt = document.createElement('option');
       opt.value = p.id;
-      opt.textContent = p.nom + (p.prix_fixe ? ' - ' + Number(p.prix_base) + '€' : ' - a partir de ' + Number(p.prix_base) + '€');
+      opt.textContent = p.nom + (prixVariable(p) ? ' - a partir de ' + Number(p.prix_base) + '€' : ' - ' + Number(p.prix_base) + '€');
       sel.appendChild(opt);
     });
     const autre = document.createElement('option'); autre.value = '__autre__'; autre.textContent = 'Autre (a preciser)'; sel.appendChild(autre);
@@ -100,26 +115,31 @@
     ((p && p.options_exclues) || []).forEach(function (id) { set[id] = true; });
     return set;
   }
+  function tailleEffective() { return state.taille || 'gros'; }
   function reconcileOptions() {
-    // garder seulement les options autorisees par le modele et disponibles pour la taille
+    // garder seulement les suppléments autorises par le modele et disponibles pour la taille
     const exclu = excluModele();
+    const t = tailleEffective();
     state.options = state.options.map(function (x) {
       const o = optionsList.find(function (y) { return y.id === x.id; });
       if (!o || exclu[o.id]) return null;
-      const prix = optionPrix(o, state.taille);
+      const prix = optionPrix(o, t);
       if (prix == null) return null;
       return { id: o.id, nom: o.nom, prix: prix, min: Number(o.duree_min || 0) };
     }).filter(Boolean);
   }
   function renderOptions() {
     const wrap = $('#options-wrap'); if (!wrap) return;
-    if (!state.taille) { wrap.innerHTML = '<p class="hint">Choisissez d\'abord la taille de tresse.</p>'; return; }
+    const p = prestaCourante();
+    const tActive = p ? C.tailleActive(p) : true;
+    if (tActive && !state.taille) { wrap.innerHTML = '<p class="hint">Choisissez d\'abord la taille de tresse.</p>'; return; }
+    const t = tailleEffective();
     const exclu = excluModele();
-    const dispo = optionsList.filter(function (o) { return !exclu[o.id] && optionPrix(o, state.taille) != null; });
-    if (!dispo.length) { wrap.innerHTML = '<p class="hint">Aucune option pour cette taille.</p>'; return; }
+    const dispo = optionsList.filter(function (o) { return !exclu[o.id] && optionPrix(o, t) != null; });
+    if (!dispo.length) { wrap.innerHTML = '<p class="hint">Aucun supplement disponible.</p>'; return; }
     wrap.innerHTML = '';
     dispo.forEach(function (o) {
-      const prix = optionPrix(o, state.taille);
+      const prix = optionPrix(o, t);
       const coche = state.options.some(function (x) { return x.id === o.id; });
       const row = document.createElement('label');
       row.className = 'option-row';
@@ -139,14 +159,20 @@
   function recalcEstimate() {
     const box = $('#estimate-box');
     if (state.estAutre) { box.classList.remove('hidden'); $('#estimate-montant').textContent = 'En DM'; state.estimate = null; majBoutonPresta(); return; }
-    if (!state.prestationId || !state.taille || !state.longueur) { box.classList.add('hidden'); state.estimate = null; majBoutonPresta(); return; }
-    const presta = prestations.find(function (p) { return p.id === state.prestationId; });
+    const presta = state.prestationId ? prestations.find(function (p) { return p.id === state.prestationId; }) : null;
+    if (!presta) { box.classList.add('hidden'); state.estimate = null; majBoutonPresta(); return; }
+    const tActive = C.tailleActive(presta), lActive = C.longueurActive(presta);
+    if ((tActive && !state.taille) || (lActive && !state.longueur)) { box.classList.add('hidden'); state.estimate = null; majBoutonPresta(); return; }
     state.estimate = C.computeEstimate(presta, state.taille, state.longueur, state.options, reglages);
     box.classList.remove('hidden'); $('#estimate-montant').textContent = euro(state.estimate.prix);
     majBoutonPresta();
   }
   function prestaComplete() {
-    if (!state.taille || !state.longueur) return false;
+    const p = prestaCourante();
+    const tActive = p ? C.tailleActive(p) : true;
+    const lActive = p ? C.longueurActive(p) : true;
+    if (tActive && !state.taille) return false;
+    if (lActive && !state.longueur) return false;
     if (state.estAutre) return state.commentaire.trim().length > 0;
     return !!state.prestationId;
   }
@@ -251,8 +277,10 @@
   function libelleOptions() { return state.options.map(function (o) { return o.nom; }).join(', '); }
 
   function remplirRecap() {
-    const lignes = [['Modele', nomModele()], ['Taille de tresse', cap(state.taille)], ['Longueur', cap(state.longueur)]];
-    if (state.options.length) lignes.push(['Options', libelleOptions()]);
+    const lignes = [['Modele', nomModele()]];
+    if (state.taille) lignes.push(['Taille de tresse', cap(state.taille)]);
+    if (state.longueur) lignes.push(['Longueur', cap(state.longueur)]);
+    if (state.options.length) lignes.push(['Supplements', libelleOptions()]);
     if (state.estAutre && state.commentaire) lignes.push(['Commentaire', state.commentaire]);
     lignes.push(['Date', C.formatDateFR(state.date)]);
     lignes.push(['Heure', state.heureDebut]);
@@ -269,8 +297,11 @@
     l.push('Prenom : ' + state.prenom);
     if (state.estAutre) l.push('Prestation : Autre - ' + state.commentaire);
     else l.push('Prestation : ' + nomModele());
-    l.push('Taille : ' + cap(state.taille) + ' / Longueur : ' + cap(state.longueur));
-    if (state.options.length) l.push('Options : ' + libelleOptions());
+    const tl = [];
+    if (state.taille) tl.push('Taille : ' + cap(state.taille));
+    if (state.longueur) tl.push('Longueur : ' + cap(state.longueur));
+    if (tl.length) l.push(tl.join(' / '));
+    if (state.options.length) l.push('Supplements : ' + libelleOptions());
     l.push('Creneau souhaite : ' + C.formatDateFR(state.date) + ' a ' + state.heureDebut);
     l.push(state.estimate ? ('Estimation : ' + euro(state.estimate.prix) + ' (a confirmer)') : 'Tarif a confirmer en DM.');
     l.push('Je reste en attente du lien pour l\'acompte de 10 euros. Merci !');
@@ -310,7 +341,7 @@
       if (v === '__autre__') { state.estAutre = true; state.prestationId = null; $('#commentaire-wrap').classList.remove('hidden'); }
       else if (v) { state.estAutre = false; state.prestationId = v; $('#commentaire-wrap').classList.add('hidden'); }
       else { state.estAutre = false; state.prestationId = null; }
-      majSupplementsAffichage();
+      majSectionsPrestation();
       reconcileOptions(); renderOptions();
       recalcEstimate();
     });
