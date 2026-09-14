@@ -5,18 +5,19 @@
   const cfg = window.FAITH_CONFIG;
 
   const VISIBILITE_DEFAUT = 2; // nombre de semaines affichees par defaut (surchargeable dans les reglages)
-  const VISIBLE_START = 5;   // nombre de jours affiches au depart
-  const VISIBLE_STEP = 5;    // increment du bouton "afficher plus"
+  const VISIBLE_START = 5;
+  const VISIBLE_STEP = 5;
 
   let prestations = [];
   let reglages = {};
+  let optionsList = [];      // options editables (table options)
   let horairesCache = [];
   let exceptionsCache = [];
 
   const state = {
-    meches: null, taille: null, longueur: null,
+    taille: null, longueur: null,
     prestationId: null, estAutre: false, commentaire: '',
-    options: [],               // [{cle,nom,prix,min}]
+    options: [],               // [{id,nom,prix,min}]
     prenom: '', insta: '', tel: '',
     date: null, heureDebut: null,
     estimate: null,
@@ -43,10 +44,11 @@
   // ---------- Chargement initial ----------
   async function init() {
     try {
-      const res = await Promise.all([C.getPrestations(true), C.getReglages()]);
-      prestations = res[0]; reglages = res[1];
+      const res = await Promise.all([C.getPrestations(true), C.getReglages(), C.getOptions(true)]);
+      prestations = res[0]; reglages = res[1]; optionsList = res[2];
       injecterSupplements();
       injecterIntro();
+      remplirModeles();
       renderOptions();
     } catch (e) { console.error(e); toast('Erreur de chargement, reessayez.'); }
     bindEvents();
@@ -64,48 +66,52 @@
     if (reglages.intro_secondaire && reglages.intro_secondaire.valeur_texte) $('#intro-secondaire').textContent = reglages.intro_secondaire.valeur_texte;
   }
 
-  // ---------- Options ----------
-  function optionsDispo() {
-    const defs = [];
-    if (reglages.option_melange_meches) defs.push({ cle: 'melange_meches', nom: 'Melange de meches', prix: Number(reglages.option_melange_meches.supplement_prix || 0), min: Number(reglages.option_melange_meches.supplement_min || 0), gate: null });
-    if (reglages.option_perles) defs.push({ cle: 'perles', nom: 'Perles', prix: Number(reglages.option_perles.supplement_prix || 0), min: Number(reglages.option_perles.supplement_min || 0), gate: 'grosMoyen' });
-    return defs;
+  // ---------- Modeles (toutes les prestations actives) ----------
+  function remplirModeles() {
+    const sel = $('#select-modele');
+    sel.innerHTML = '<option value="">Selectionnez un modele</option>';
+    prestations.forEach(function (p) {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.nom + (p.prix_fixe ? ' - ' + Number(p.prix_base) + '€' : ' - a partir de ' + Number(p.prix_base) + '€');
+      sel.appendChild(opt);
+    });
+    const autre = document.createElement('option'); autre.value = '__autre__'; autre.textContent = 'Autre (a preciser)'; sel.appendChild(autre);
+  }
+
+  // ---------- Options (selon la taille) ----------
+  function optionPrix(o, taille) { const v = o['prix_' + taille]; return v == null ? null : Number(v); }
+  function reconcileOptions() {
+    // garder seulement les options disponibles pour la taille et mettre a jour leur prix
+    state.options = state.options.map(function (x) {
+      const o = optionsList.find(function (y) { return y.id === x.id; });
+      if (!o) return null;
+      const prix = optionPrix(o, state.taille);
+      if (prix == null) return null;
+      return { id: o.id, nom: o.nom, prix: prix, min: Number(o.duree_min || 0) };
+    }).filter(Boolean);
   }
   function renderOptions() {
     const wrap = $('#options-wrap'); if (!wrap) return;
-    const defs = optionsDispo();
+    if (!state.taille) { wrap.innerHTML = '<p class="hint">Choisissez d\'abord la taille de tresse.</p>'; return; }
+    const dispo = optionsList.filter(function (o) { return optionPrix(o, state.taille) != null; });
+    if (!dispo.length) { wrap.innerHTML = '<p class="hint">Aucune option pour cette taille.</p>'; return; }
     wrap.innerHTML = '';
-    defs.forEach(function (d) {
-      const bloque = d.gate === 'grosMoyen' && state.taille === 'petit';
-      if (bloque) state.options = state.options.filter(function (o) { return o.cle !== d.cle; });
-      const coche = state.options.some(function (o) { return o.cle === d.cle; });
+    dispo.forEach(function (o) {
+      const prix = optionPrix(o, state.taille);
+      const coche = state.options.some(function (x) { return x.id === o.id; });
       const row = document.createElement('label');
-      row.className = 'option-row' + (bloque ? ' disabled' : '');
-      row.innerHTML = '<input type="checkbox" ' + (coche ? 'checked' : '') + (bloque ? ' disabled' : '') + '/>' +
-        '<span class="op-nom">' + d.nom + (d.gate === 'grosMoyen' ? '<span class="op-note">Uniquement pour les tailles gros et moyen</span>' : '') + '</span>' +
-        '<span class="op-prix">+' + d.prix + '€</span>';
-      const cb = row.querySelector('input');
-      cb.addEventListener('change', function () {
-        if (cb.checked) { if (!state.options.some(function (o) { return o.cle === d.cle; })) state.options.push({ cle: d.cle, nom: d.nom, prix: d.prix, min: d.min }); }
-        else state.options = state.options.filter(function (o) { return o.cle !== d.cle; });
+      row.className = 'option-row';
+      row.innerHTML = '<input type="checkbox" ' + (coche ? 'checked' : '') + '/>' +
+        '<span class="op-nom">' + escapeHtml(o.nom) + '</span>' +
+        '<span class="op-prix">+' + prix + '€</span>';
+      row.querySelector('input').addEventListener('change', function (e) {
+        if (e.target.checked) { if (!state.options.some(function (x) { return x.id === o.id; })) state.options.push({ id: o.id, nom: o.nom, prix: prix, min: Number(o.duree_min || 0) }); }
+        else state.options = state.options.filter(function (x) { return x.id !== o.id; });
         recalcEstimate();
       });
       wrap.appendChild(row);
     });
-  }
-
-  // ---------- Modeles filtres ----------
-  function remplirModeles() {
-    const sel = $('#select-modele');
-    sel.innerHTML = '<option value="">Selectionnez un modele</option>';
-    const dispo = prestations.filter(function (p) { return state.meches ? p.dispo_avec_meches : p.dispo_sans_meches; });
-    dispo.forEach(function (p) {
-      const opt = document.createElement('option');
-      opt.value = p.id; opt.textContent = p.nom + ' - a partir de ' + Number(p.prix_base) + '€';
-      sel.appendChild(opt);
-    });
-    const autre = document.createElement('option'); autre.value = '__autre__'; autre.textContent = 'Autre (a preciser)'; sel.appendChild(autre);
-    sel.disabled = false; $('#modele-hint').classList.add('hidden');
   }
 
   // ---------- Estimation ----------
@@ -119,7 +125,7 @@
     majBoutonPresta();
   }
   function prestaComplete() {
-    if (state.meches === null || !state.taille || !state.longueur) return false;
+    if (!state.taille || !state.longueur) return false;
     if (state.estAutre) return state.commentaire.trim().length > 0;
     return !!state.prestationId;
   }
@@ -184,17 +190,14 @@
     if (!items.length) { zone.innerHTML = '<p class="hint">Aucune disponibilite prochaine. Essayez de choisir une date precise.</p>'; }
     else { zone.innerHTML = items.map(dayItemHtml).join(''); }
 
-    // bouton "afficher plus"
     const btnPlus = $('#btn-plus-dispo');
     btnPlus.classList.toggle('hidden', state.joursDispo.length <= state.visibleN);
 
-    // handlers
     $$('#jours-dispo .day-head').forEach(function (h) {
       h.addEventListener('click', function () {
         const item = h.closest('.day-item');
         const d = item.dataset.date;
         state.openDate = (item.classList.contains('open')) ? null : d;
-        // ouvrir/fermer sans tout reconstruire
         $$('#jours-dispo .day-item').forEach(function (it) { it.classList.toggle('open', it.dataset.date === state.openDate); });
       });
     });
@@ -223,12 +226,11 @@
   function telValide(valeur) { const net = valeur.replace(/[\s.\-()]/g, ''); return /^(?:\+33|0)[1-9]\d{8}$/.test(net); }
 
   // ---------- Recap / message ----------
-  function libelleMeches() { return state.meches ? 'Avec meches' : 'Sans meches'; }
   function nomModele() { if (state.estAutre) return 'Autre'; const p = prestations.find(function (x) { return x.id === state.prestationId; }); return p ? p.nom : ''; }
   function libelleOptions() { return state.options.map(function (o) { return o.nom; }).join(', '); }
 
   function remplirRecap() {
-    const lignes = [['Modele', nomModele()], ['Meches', libelleMeches()], ['Taille de tresse', cap(state.taille)], ['Longueur', cap(state.longueur)]];
+    const lignes = [['Modele', nomModele()], ['Taille de tresse', cap(state.taille)], ['Longueur', cap(state.longueur)]];
     if (state.options.length) lignes.push(['Options', libelleOptions()]);
     if (state.estAutre && state.commentaire) lignes.push(['Commentaire', state.commentaire]);
     lignes.push(['Date', C.formatDateFR(state.date)]);
@@ -245,7 +247,7 @@
     l.push('Bonjour Faith Hair, je viens de remplir le formulaire de reservation.');
     l.push('Prenom : ' + state.prenom);
     if (state.estAutre) l.push('Prestation : Autre - ' + state.commentaire);
-    else l.push('Prestation : ' + nomModele() + ' (' + libelleMeches().toLowerCase() + ')');
+    else l.push('Prestation : ' + nomModele());
     l.push('Taille : ' + cap(state.taille) + ' / Longueur : ' + cap(state.longueur));
     if (state.options.length) l.push('Options : ' + libelleOptions());
     l.push('Creneau souhaite : ' + C.formatDateFR(state.date) + ' a ' + state.heureDebut);
@@ -265,7 +267,7 @@
     const row = {
       statut: 'en_attente', prenom: state.prenom, instagram: state.insta.replace(/^@/, ''), telephone: state.tel,
       prestation_id: state.estAutre ? null : state.prestationId, nom_presta: nomModele(), est_autre: state.estAutre,
-      avec_meches: state.meches, taille: state.taille, longueur: state.longueur, commentaire: state.commentaire,
+      taille: state.taille, longueur: state.longueur, commentaire: state.commentaire,
       options: state.options, prix_estime: prixEstime, duree_estimee_min: dureeEstimee, duree_bloc_min: dureeBloc,
       date_rdv: state.date, heure_debut: state.heureDebut, heure_fin: heureFin
     };
@@ -282,19 +284,20 @@
   function bindEvents() {
     $('#btn-start').addEventListener('click', function () { showPage('page-presta'); setStep(1); });
 
-    $$('.choice[data-meches]').forEach(function (el) {
-      el.addEventListener('click', function () {
-        selectDans('.choice[data-meches]', el);
-        state.meches = el.dataset.meches === 'true';
-        state.prestationId = null; state.estAutre = false; $('#commentaire-wrap').classList.add('hidden');
-        remplirModeles(); recalcEstimate();
-      });
+    $('#select-modele').addEventListener('change', function () {
+      const v = this.value;
+      if (v === '__autre__') { state.estAutre = true; state.prestationId = null; $('#commentaire-wrap').classList.remove('hidden'); }
+      else if (v) { state.estAutre = false; state.prestationId = v; $('#commentaire-wrap').classList.add('hidden'); }
+      else { state.estAutre = false; state.prestationId = null; }
+      recalcEstimate();
     });
+    $('#commentaire').addEventListener('input', function () { state.commentaire = this.value; majBoutonPresta(); });
+
     $$('.choice[data-taille]').forEach(function (el) {
       el.addEventListener('click', function () {
         selectDans('.choice[data-taille]', el);
         state.taille = el.dataset.taille;
-        renderOptions(); recalcEstimate();
+        reconcileOptions(); renderOptions(); recalcEstimate();
       });
     });
     $$('.choice[data-longueur]').forEach(function (el) {
@@ -304,15 +307,6 @@
         recalcEstimate();
       });
     });
-
-    $('#select-modele').addEventListener('change', function () {
-      const v = this.value;
-      if (v === '__autre__') { state.estAutre = true; state.prestationId = null; $('#commentaire-wrap').classList.remove('hidden'); }
-      else if (v) { state.estAutre = false; state.prestationId = v; $('#commentaire-wrap').classList.add('hidden'); }
-      else { state.estAutre = false; state.prestationId = null; }
-      recalcEstimate();
-    });
-    $('#commentaire').addEventListener('input', function () { state.commentaire = this.value; majBoutonPresta(); });
 
     $('#btn-to-creneau').addEventListener('click', function () { showPage('page-creneau'); setStep(2); chargerJoursDispo(); });
     $('#btn-back-presta').addEventListener('click', function () { showPage('page-presta'); setStep(1); });
