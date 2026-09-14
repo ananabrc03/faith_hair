@@ -229,15 +229,10 @@
     const body = document.createElement('div');
     body.innerHTML =
       '<h2>' + esc(r.nom_presta || 'Autre') + ' ' + badge(r) + '</h2>' +
-      infoLigne('Cliente', esc(r.prenom) + ' &middot; ' + instaLien(r.instagram) + ' &middot; ' + telLien(r.telephone)) +
+      '<div class="recap-line"><span>Cliente <button id="btn-edit-cliente" title="Modifier les infos" aria-label="Modifier les infos" style="background:none;border:none;cursor:pointer;color:var(--brun-clair);padding:0 4px"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button></span><span>' + esc(r.prenom) + ' &middot; ' + instaLien(r.instagram) + ' &middot; ' + telLien(r.telephone) + '</span></div>' +
       infoLigne('Meches', r.avec_meches ? 'Avec meches' : 'Sans meches') +
       infoLigne('Taille / Longueur', cap(r.taille) + ' / ' + cap(r.longueur)) +
       (r.options && r.options.length ? infoLigne('Options', r.options.map(function (o) { return esc(o.nom); }).join(', ')) : '') +
-      '<details style="margin:10px 0"><summary style="cursor:pointer;color:var(--brun);font-weight:500">Modifier les infos cliente</summary>' +
-      '<label class="field">Prenom</label><input type="text" id="ed-prenom" value="' + esc(r.prenom) + '" />' +
-      '<label class="field">Instagram</label><input type="text" id="ed-insta" value="' + esc(r.instagram) + '" />' +
-      '<label class="field">Telephone</label><input type="text" id="ed-tel" value="' + esc(r.telephone) + '" />' +
-      '<button class="btn btn-sm mt" id="ed-save">Enregistrer les infos</button></details>' +
       (r.est_autre && r.commentaire ? infoLigne('Commentaire', esc(r.commentaire)) : '') +
       infoLigne('Creneau', r.date_rdv ? (C.formatDateFR(r.date_rdv) + (r.heure_debut ? ' a ' + r.heure_debut.slice(0, 5) : '')) : 'Non defini') +
       infoLigne('Duree bloquee', r.duree_bloc_min ? C.minToLabel(r.duree_bloc_min) : 'Non definie') +
@@ -265,16 +260,7 @@
 
     const modal = ouvrirModal(body);
 
-    $('#ed-save', body).addEventListener('click', async function () {
-      const patch = {
-        prenom: $('#ed-prenom', body).value.trim(),
-        instagram: $('#ed-insta', body).value.trim().replace(/^@/, ''),
-        telephone: $('#ed-tel', body).value.trim()
-      };
-      const { error } = await sb.from('reservations').update(patch).eq('id', r.id);
-      if (error) { console.error(error); toast('Erreur.'); return; }
-      toast('Infos cliente mises a jour.'); fermerModal(modal); chargerCRM();
-    });
+    $('#btn-edit-cliente', body).addEventListener('click', function () { modalEditCliente(r, modal); });
 
     function recalcTotal() {
       const base = Number($('#m-facture', body).value) || 0;
@@ -328,6 +314,29 @@
 
   function infoLigne(k, v) {
     return '<div class="recap-line"><span>' + k + '</span><span>' + v + '</span></div>';
+  }
+
+  // Petite fenetre d'edition des infos cliente (ouverte depuis le crayon)
+  function modalEditCliente(r, parentModal) {
+    const body = document.createElement('div');
+    body.innerHTML =
+      '<h2>Modifier les infos cliente</h2>' +
+      '<label class="field">Prenom</label><input type="text" id="ec-prenom" value="' + esc(r.prenom) + '" />' +
+      '<label class="field">Instagram</label><input type="text" id="ec-insta" value="' + esc(r.instagram) + '" />' +
+      '<label class="field">Telephone</label><input type="text" id="ec-tel" value="' + esc(r.telephone) + '" />' +
+      '<button class="btn btn-block mt" id="ec-save">Enregistrer</button>';
+    const modal = ouvrirModal(body);
+    $('#ec-save', body).addEventListener('click', async function () {
+      const patch = {
+        prenom: $('#ec-prenom', body).value.trim(),
+        instagram: $('#ec-insta', body).value.trim().replace(/^@/, ''),
+        telephone: $('#ec-tel', body).value.trim()
+      };
+      const { error } = await sb.from('reservations').update(patch).eq('id', r.id);
+      if (error) { console.error(error); toast('Erreur.'); return; }
+      toast('Infos cliente mises a jour.');
+      fermerModal(modal); fermerModal(parentModal); chargerCRM();
+    });
   }
 
   // ---------- Replanification ----------
