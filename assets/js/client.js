@@ -4,7 +4,7 @@
   const C = window.FaithCore;
   const cfg = window.FAITH_CONFIG;
 
-  const SCAN_DAYS = 90;      // horizon de recherche de disponibilites
+  const VISIBILITE_DEFAUT = 2; // nombre de semaines affichees par defaut (surchargeable dans les reglages)
   const VISIBLE_START = 5;   // nombre de jours affiches au depart
   const VISIBLE_STEP = 5;    // increment du bouton "afficher plus"
 
@@ -21,7 +21,7 @@
     date: null, heureDebut: null,
     estimate: null,
     joursDispo: [], visibleN: VISIBLE_START, pinnedDay: null, openDate: null,
-    dureeEstimee: 180, dureeBloc: 210
+    dureeEstimee: 180, dureeBloc: 210, horizonDays: VISIBILITE_DEFAUT * 7
   };
 
   const $ = function (sel) { return document.querySelector(sel); };
@@ -135,8 +135,10 @@
     if (state.estimate) { state.dureeEstimee = state.estimate.duree; state.dureeBloc = state.estimate.bloc; }
     else { const b = reglages.battement ? Number(reglages.battement.supplement_min || 0) : 30; state.dureeEstimee = 180; state.dureeBloc = 180 + b; }
 
+    const semaines = reglages.visibilite_semaines ? Number(reglages.visibilite_semaines.supplement_min || VISIBILITE_DEFAUT) : VISIBILITE_DEFAUT;
+    state.horizonDays = Math.max(1, semaines) * 7;
     const today = C.todayISO();
-    const fin = addDays(today, SCAN_DAYS);
+    const fin = addDays(today, state.horizonDays);
     try {
       const [horaires, exceptions, resRange] = await Promise.all([
         C.getHoraires(), C.getExceptions(),
@@ -147,11 +149,10 @@
       (resRange.data || []).forEach(function (r) {
         if (r.heure_debut && r.heure_fin) { (occMap[r.date_rdv] = occMap[r.date_rdv] || []).push({ debut: C.timeToMin(r.heure_debut), fin: C.timeToMin(r.heure_fin) }); }
       });
-      for (let i = 0; i < SCAN_DAYS; i++) {
+      for (let i = 0; i < state.horizonDays; i++) {
         const d = addDays(today, i);
         const slots = C.creneauxDisponibles(d, state.dureeEstimee, state.dureeBloc, horaires, exceptions, occMap[d] || []);
         if (slots.length) state.joursDispo.push({ date: d, slots: slots });
-        if (state.joursDispo.length >= 40) break;
       }
       if (state.joursDispo.length) state.openDate = state.joursDispo[0].date;
       renderJours();
@@ -320,6 +321,7 @@
       const inp = $('#date-rdv');
       inp.classList.toggle('hidden');
       inp.min = C.todayISO();
+      inp.max = addDays(C.todayISO(), state.horizonDays || (VISIBILITE_DEFAUT * 7));
       if (!inp.classList.contains('hidden')) inp.focus();
     });
     $('#date-rdv').addEventListener('change', function () { choisirDatePrecise(this.value); });
