@@ -62,6 +62,16 @@
   // Affiche/masque les sections taille et longueur et leurs prix selon la prestation
   function majSectionsPrestation() {
     const p = prestaCourante();
+    // Tant qu'aucun modele n'est choisi, on n'affiche que le selecteur de modele
+    const hasSel = state.estAutre || !!state.prestationId;
+    $('#options-block').classList.toggle('hidden', !hasSel);
+    if (!hasSel) {
+      $('#bloc-taille').classList.add('hidden');
+      $('#bloc-longueur').classList.add('hidden');
+      state.taille = null; state.longueur = null;
+      $$('.choice[data-taille], .choice[data-longueur]').forEach(function (x) { x.classList.remove('selected'); });
+      return;
+    }
     const tActive = p ? C.tailleActive(p) : true;
     $('#bloc-taille').classList.toggle('hidden', !tActive);
     ['gros', 'moyen', 'petit'].forEach(function (k) {
