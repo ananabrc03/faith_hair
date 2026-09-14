@@ -35,17 +35,16 @@
     <section id="page-presta" class="card hidden">
       <h2>Votre prestation</h2>
 
-      <!-- Mèches -->
+      <!-- Modèle (en premier) -->
       <div class="q-block">
-        <div class="q-label">Avec ou sans meches</div>
-        <div class="choice-grid cols-2">
-          <div class="choice" data-meches="true">
-            <div class="titre">Avec meches</div>
-          </div>
-          <div class="choice" data-meches="false">
-            <div class="titre">Sans meches</div>
-            <div class="sup">Cheveux naturels</div>
-          </div>
+        <div class="q-label">Modele</div>
+        <select id="select-modele">
+          <option value="">Selectionnez un modele</option>
+        </select>
+        <div id="commentaire-wrap" class="hidden">
+          <label class="field" for="commentaire">Commentaire</label>
+          <textarea id="commentaire" placeholder="Decrivez la coiffure souhaitee. Vous pourrez envoyer des images de reference en DM."></textarea>
+          <p class="hint">Pour le modele "Autre", le tarif vous sera communique en DM.</p>
         </div>
       </div>
 
@@ -94,20 +93,6 @@
       <div class="q-block" id="options-block">
         <div class="q-label">Options</div>
         <div id="options-wrap"></div>
-      </div>
-
-      <!-- Modèle -->
-      <div class="q-block">
-        <div class="q-label">Modele</div>
-        <p class="hint" id="modele-hint">Choisissez d'abord avec ou sans meches.</p>
-        <select id="select-modele" disabled>
-          <option value="">Selectionnez un modele</option>
-        </select>
-        <div id="commentaire-wrap" class="hidden">
-          <label class="field" for="commentaire">Commentaire</label>
-          <textarea id="commentaire" placeholder="Decrivez la coiffure souhaitee. Vous pourrez envoyer des images de reference en DM."></textarea>
-          <p class="hint">Pour le modele "Autre", le tarif vous sera communique en DM.</p>
-        </div>
       </div>
 
       <!-- Estimation -->
