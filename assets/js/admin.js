@@ -230,7 +230,6 @@
     body.innerHTML =
       '<h2>' + esc(r.nom_presta || 'Autre') + ' ' + badge(r) + '</h2>' +
       '<div class="recap-line"><span>Cliente <button id="btn-edit-cliente" title="Modifier les infos" aria-label="Modifier les infos" style="background:none;border:none;cursor:pointer;color:var(--brun-clair);padding:0 4px"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button></span><span>' + esc(r.prenom) + ' &middot; ' + instaLien(r.instagram) + ' &middot; ' + telLien(r.telephone) + '</span></div>' +
-      infoLigne('Meches', r.avec_meches ? 'Avec meches' : 'Sans meches') +
       infoLigne('Taille / Longueur', cap(r.taille) + ' / ' + cap(r.longueur)) +
       (r.options && r.options.length ? infoLigne('Options', r.options.map(function (o) { return esc(o.nom); }).join(', ')) : '') +
       (r.est_autre && r.commentaire ? infoLigne('Commentaire', esc(r.commentaire)) : '') +
@@ -415,15 +414,12 @@
     if (!prestationsCache.length) { zone.innerHTML = '<p class="hint">Aucune prestation.</p>'; return; }
     zone.innerHTML = '';
     prestationsCache.forEach(function (p) {
-      const meches = [];
-      if (p.dispo_avec_meches) meches.push('avec');
-      if (p.dispo_sans_meches) meches.push('sans');
       const row = document.createElement('div');
       row.className = 'list-row';
       row.innerHTML =
         '<div class="info">' +
-        '<div class="nom">' + esc(p.nom) + (p.actif ? '' : ' <span class="badge archive">Masquee</span>') + '</div>' +
-        '<div class="sub">' + euro(p.prix_base) + ' &middot; ' + C.minToLabel(p.duree_base_min) + ' a ' + C.minToLabel(p.duree_max_min != null ? p.duree_max_min : p.duree_base_min) + ' &middot; meches: ' + (meches.join(' + ') || 'aucune') + '</div>' +
+        '<div class="nom">' + esc(p.nom) + (p.prix_fixe ? ' <span class="badge confirme">Prix fixe</span>' : '') + (p.actif ? '' : ' <span class="badge archive">Masquee</span>') + '</div>' +
+        '<div class="sub">' + euro(p.prix_base) + ' &middot; ' + C.minToLabel(p.duree_base_min) + ' a ' + C.minToLabel(p.duree_max_min != null ? p.duree_max_min : p.duree_base_min) + '</div>' +
         '<div class="sub" style="margin-top:4px">' + esc(p.descriptif) + '</div>' +
         '</div>' +
         '<div class="prix">&#9998;</div>';
@@ -433,7 +429,7 @@
   }
 
   function modalPrestation(p) {
-    const est = p || { nom: '', descriptif: '', prix_base: 0, duree_base_min: 120, duree_max_min: 240, dispo_avec_meches: false, dispo_sans_meches: false, actif: true, ordre: 0 };
+    const est = p || { nom: '', descriptif: '', prix_base: 0, duree_base_min: 120, duree_max_min: 240, prix_fixe: false, actif: true, ordre: 0 };
     const body = document.createElement('div');
     body.innerHTML =
       '<h2>' + (p ? 'Modifier' : 'Ajouter') + ' une prestation</h2>' +
@@ -444,9 +440,7 @@
         '<div style="flex:1"><label class="field">Duree mini - gros (min)</label><input type="number" id="p-duree" value="' + est.duree_base_min + '" /></div>' +
         '<div style="flex:1"><label class="field">Duree maxi - petit (min)</label><input type="number" id="p-dureemax" value="' + (est.duree_max_min != null ? est.duree_max_min : est.duree_base_min) + '" /></div>' +
       '</div>' +
-      '<label class="field">Disponibilite</label>' +
-      '<label style="display:flex;align-items:center;gap:8px;font-weight:400"><input type="checkbox" id="p-avec" ' + (est.dispo_avec_meches ? 'checked' : '') + ' style="width:20px;height:20px"/> Avec meches</label>' +
-      '<label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-top:6px"><input type="checkbox" id="p-sans" ' + (est.dispo_sans_meches ? 'checked' : '') + ' style="width:20px;height:20px"/> Sans meches</label>' +
+      '<label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-top:10px"><input type="checkbox" id="p-fixe" ' + (est.prix_fixe ? 'checked' : '') + ' style="width:20px;height:20px"/> Prix fixe (taille et longueur n\'ajoutent rien au prix)</label>' +
       '<label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-top:6px"><input type="checkbox" id="p-actif" ' + (est.actif ? 'checked' : '') + ' style="width:20px;height:20px"/> Visible dans le questionnaire</label>' +
       '<button class="btn btn-block mt" id="p-save">Enregistrer</button>' +
       (p ? '<button class="btn btn-danger btn-block mt" id="p-del">Supprimer</button>' : '');
@@ -459,8 +453,7 @@
         prix_base: Number($('#p-prix', body).value) || 0,
         duree_base_min: Number($('#p-duree', body).value) || 0,
         duree_max_min: Number($('#p-dureemax', body).value) || 0,
-        dispo_avec_meches: $('#p-avec', body).checked,
-        dispo_sans_meches: $('#p-sans', body).checked,
+        prix_fixe: $('#p-fixe', body).checked,
         actif: $('#p-actif', body).checked
       };
       if (!patch.nom) { toast('Le nom est requis.'); return; }
@@ -510,6 +503,7 @@
 
   async function modalReglages() {
     reglages = await C.getReglages();
+    let opts = await C.getOptions(false);
     const body = document.createElement('div');
     body.innerHTML =
       '<h2>Reglages</h2>' +
@@ -525,6 +519,8 @@
         '<label class="field">Duree (min)</label><input type="number" data-cle="battement" data-champ="min" value="' + (reglages.battement ? (reglages.battement.supplement_min != null ? reglages.battement.supplement_min : 0) : 30) + '" />') +
       rgSection('visibilite', 'Visibilite des creneaux (cliente)',
         '<label class="field">Nombre de semaines affichees a la cliente</label><input type="number" min="1" max="12" data-cle="visibilite_semaines" data-champ="min" value="' + (reglages.visibilite_semaines ? (reglages.visibilite_semaines.supplement_min != null ? reglages.visibilite_semaines.supplement_min : 2) : 2) + '" />') +
+      rgSection('options', 'Options (melange de meches, perles...)',
+        '<div id="rg-options-list"></div><button class="btn btn-ghost btn-block mt" id="rg-add-option">+ Ajouter une option</button>') +
       '<button class="btn btn-block mt" id="rg-save">Enregistrer</button>';
     const modal = ouvrirModal(body);
 
@@ -535,6 +531,24 @@
         h.parentNode.classList.toggle('open');
       });
     });
+
+    function pxOpt(v) { return v == null ? '-' : Number(v) + '€'; }
+    function renderOptionsAdmin() {
+      const list = $('#rg-options-list', body);
+      if (!opts.length) { list.innerHTML = '<p class="hint">Aucune option.</p>'; return; }
+      list.innerHTML = opts.map(function (o) {
+        return '<div class="list-row" data-id="' + o.id + '" style="cursor:pointer">' +
+          '<div class="info"><div class="nom">' + esc(o.nom) + (o.actif ? '' : ' <span class="badge archive">Masquee</span>') + '</div>' +
+          '<div class="sub">Gros ' + pxOpt(o.prix_gros) + ' &middot; Moyen ' + pxOpt(o.prix_moyen) + ' &middot; Petit ' + pxOpt(o.prix_petit) + '</div></div>' +
+          '<div class="prix">&#9998;</div></div>';
+      }).join('');
+      $$('#rg-options-list .list-row', body).forEach(function (row) {
+        row.addEventListener('click', function () { const o = opts.find(function (x) { return x.id === row.dataset.id; }); modalEditOption(o, refreshOpts); });
+      });
+    }
+    async function refreshOpts() { opts = await C.getOptions(false); renderOptionsAdmin(); }
+    renderOptionsAdmin();
+    $('#rg-add-option', body).addEventListener('click', function () { modalEditOption(null, refreshOpts); });
 
     $('#rg-save', body).addEventListener('click', async function () {
       const champs = $$('.rg-body input, .rg-body textarea', body);
@@ -551,6 +565,44 @@
       toast('Reglages enregistres.');
       fermerModal(modal);
     });
+  }
+
+  // Editeur d'une option (creation / modification / suppression)
+  function modalEditOption(o, onDone) {
+    const est = o || { nom: '', prix_gros: '', prix_moyen: '', prix_petit: '', duree_min: 0, actif: true };
+    const body = document.createElement('div');
+    body.innerHTML =
+      '<h2>' + (o ? 'Modifier' : 'Ajouter') + ' une option</h2>' +
+      '<label class="field">Nom</label><input type="text" id="op-nom" value="' + esc(est.nom) + '" />' +
+      '<p class="hint">Prix par taille. Laissez vide si l\'option n\'est pas disponible pour cette taille.</p>' +
+      '<div style="display:flex;gap:8px">' +
+        '<div style="flex:1"><label class="field">Gros (&euro;)</label><input type="number" step="0.5" id="op-gros" value="' + (est.prix_gros != null ? est.prix_gros : '') + '" /></div>' +
+        '<div style="flex:1"><label class="field">Moyen (&euro;)</label><input type="number" step="0.5" id="op-moyen" value="' + (est.prix_moyen != null ? est.prix_moyen : '') + '" /></div>' +
+        '<div style="flex:1"><label class="field">Petit (&euro;)</label><input type="number" step="0.5" id="op-petit" value="' + (est.prix_petit != null ? est.prix_petit : '') + '" /></div>' +
+      '</div>' +
+      '<label class="field">Duree ajoutee (min)</label><input type="number" id="op-duree" value="' + (est.duree_min != null ? est.duree_min : 0) + '" />' +
+      '<label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-top:8px"><input type="checkbox" id="op-actif" ' + (est.actif ? 'checked' : '') + ' style="width:20px;height:20px"/> Active</label>' +
+      '<button class="btn btn-block mt" id="op-save">Enregistrer</button>' +
+      (o ? '<button class="btn btn-danger btn-block mt" id="op-del">Supprimer</button>' : '');
+    const modal = ouvrirModal(body);
+    function num(id) { const v = $(id, body).value; return v === '' ? null : Number(v); }
+    $('#op-save', body).addEventListener('click', async function () {
+      const patch = { nom: $('#op-nom', body).value.trim(), prix_gros: num('#op-gros'), prix_moyen: num('#op-moyen'), prix_petit: num('#op-petit'), duree_min: Number($('#op-duree', body).value) || 0, actif: $('#op-actif', body).checked };
+      if (!patch.nom) { toast('Le nom est requis.'); return; }
+      let error;
+      if (o) { ({ error } = await sb.from('options').update(patch).eq('id', o.id)); }
+      else { ({ error } = await sb.from('options').insert(patch)); }
+      if (error) { console.error(error); toast('Erreur.'); return; }
+      toast('Option enregistree.'); fermerModal(modal); if (onDone) onDone();
+    });
+    if (o) {
+      $('#op-del', body).addEventListener('click', async function () {
+        if (!confirm('Supprimer cette option ?')) return;
+        const { error } = await sb.from('options').delete().eq('id', o.id);
+        if (error) { console.error(error); toast('Erreur.'); return; }
+        toast('Option supprimee.'); fermerModal(modal); if (onDone) onDone();
+      });
+    }
   }
 
   // ================= PLANNING =================
@@ -754,7 +806,7 @@
 
   // ================= NOUVELLE RESERVATION (manuelle) =================
   async function modalNouvelleResa() {
-    const [prestas, regs] = await Promise.all([C.getPrestations(false), C.getReglages()]);
+    const [prestas, regs, opts] = await Promise.all([C.getPrestations(false), C.getReglages(), C.getOptions(false)]);
     reglages = regs;
     const body = document.createElement('div');
     body.innerHTML =
@@ -762,7 +814,6 @@
       '<label class="field">Prenom</label><input type="text" id="nr-prenom" />' +
       '<label class="field">Instagram</label><input type="text" id="nr-insta" placeholder="pseudo" />' +
       '<label class="field">Telephone</label><input type="tel" id="nr-tel" value="+33" />' +
-      '<label class="field">Meches</label><select id="nr-meches"><option value="true">Avec meches</option><option value="false">Sans meches</option></select>' +
       '<label class="field">Prestation</label><select id="nr-presta"></select>' +
       '<div id="nr-autre" class="hidden"><label class="field">Nom / description</label><input type="text" id="nr-autre-nom" /></div>' +
       '<div style="display:flex;gap:10px">' +
@@ -785,23 +836,23 @@
 
     function estAutre() { return $('#nr-presta', body).value === '__autre__'; }
     function remplirPresta() {
-      const meches = $('#nr-meches', body).value === 'true';
       const sel = $('#nr-presta', body); sel.innerHTML = '';
-      prestas.filter(function (p) { return p.actif && (meches ? p.dispo_avec_meches : p.dispo_sans_meches); }).forEach(function (p) {
+      prestas.filter(function (p) { return p.actif; }).forEach(function (p) {
         const o = document.createElement('option'); o.value = p.id; o.textContent = p.nom + ' (' + euro(p.prix_base) + ')'; sel.appendChild(o);
       });
       const a = document.createElement('option'); a.value = '__autre__'; a.textContent = 'Autre'; sel.appendChild(a);
     }
+    function optionPrix(o, taille) { const v = o['prix_' + taille]; return v == null ? null : Number(v); }
     function renderOpts() {
       const wrap = $('#nr-options', body); wrap.innerHTML = '';
       const taille = $('#nr-taille', body).value;
-      const defs = [];
-      if (regs.option_melange_meches) defs.push({ cle: 'melange_meches', nom: 'Melange de meches', prix: Number(regs.option_melange_meches.supplement_prix || 0), min: Number(regs.option_melange_meches.supplement_min || 0), gate: null });
-      if (regs.option_perles) defs.push({ cle: 'perles', nom: 'Perles', prix: Number(regs.option_perles.supplement_prix || 0), min: Number(regs.option_perles.supplement_min || 0), gate: 'grosMoyen' });
-      defs.forEach(function (d) {
-        const bloque = d.gate === 'grosMoyen' && taille === 'petit';
-        const row = document.createElement('label'); row.className = 'option-row' + (bloque ? ' disabled' : ''); row._def = d;
-        row.innerHTML = '<input type="checkbox" ' + (bloque ? 'disabled' : '') + '/><span class="op-nom">' + d.nom + '</span><span class="op-prix">+' + d.prix + '€</span>';
+      const dispo = opts.filter(function (o) { return o.actif && optionPrix(o, taille) != null; });
+      if (!dispo.length) { wrap.innerHTML = '<p class="hint">Aucune option pour cette taille.</p>'; return; }
+      dispo.forEach(function (o) {
+        const prix = optionPrix(o, taille);
+        const row = document.createElement('label'); row.className = 'option-row';
+        row._def = { id: o.id, nom: o.nom, prix: prix, min: Number(o.duree_min || 0) };
+        row.innerHTML = '<input type="checkbox"/><span class="op-nom">' + esc(o.nom) + '</span><span class="op-prix">+' + prix + '€</span>';
         row.querySelector('input').addEventListener('change', recalc);
         wrap.appendChild(row);
       });
@@ -809,7 +860,7 @@
     function selectedOptions() {
       const arr = [];
       $$('#nr-options .option-row', body).forEach(function (row) {
-        const cb = row.querySelector('input'); if (cb.checked && !cb.disabled) { const d = row._def; arr.push({ cle: d.cle, nom: d.nom, prix: d.prix, min: d.min }); }
+        const cb = row.querySelector('input'); if (cb.checked) arr.push(row._def);
       });
       return arr;
     }
@@ -823,7 +874,6 @@
       $('#nr-total', body).textContent = euro(est.prix) + ' / ' + C.minToLabel(est.duree);
     }
     remplirPresta(); renderOpts(); recalc();
-    $('#nr-meches', body).addEventListener('change', function () { remplirPresta(); recalc(); });
     $('#nr-presta', body).addEventListener('change', recalc);
     $('#nr-taille', body).addEventListener('change', function () { renderOpts(); recalc(); });
     $('#nr-longueur', body).addEventListener('change', recalc);
@@ -835,7 +885,6 @@
       const tel = $('#nr-tel', body).value.trim();
       const date = $('#nr-date', body).value; const heure = $('#nr-heure', body).value;
       if (!prenom || !date || !heure) { toast('Prenom, date et heure requis.'); return; }
-      const meches = $('#nr-meches', body).value === 'true';
       const taille = $('#nr-taille', body).value; const longueur = $('#nr-longueur', body).value;
       const autre = estAutre();
       let prix = null, duree = null, bloc = null, nom = 'Autre', prestationId = null, options = [];
@@ -855,7 +904,7 @@
       const heureFin = bloc != null ? C.minToTime(C.timeToMin(heure) + bloc) : null;
       const row = {
         statut: $('#nr-statut', body).value, prenom: prenom, instagram: insta, telephone: tel,
-        prestation_id: prestationId, nom_presta: nom, est_autre: autre, avec_meches: meches,
+        prestation_id: prestationId, nom_presta: nom, est_autre: autre,
         taille: taille, longueur: longueur, commentaire: '', options: options,
         prix_estime: autre ? null : prix, prix_facture: autre ? prix : null, prix_final: autre ? prix : null,
         duree_estimee_min: duree, duree_bloc_min: bloc, date_rdv: date, heure_debut: heure, heure_fin: heureFin
