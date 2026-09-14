@@ -22,6 +22,11 @@
     const p = String(pseudo || '').replace(/^@/, '');
     return '<a href="https://www.instagram.com/' + encodeURIComponent(p) + '/" target="_blank" rel="noopener">@' + esc(p) + '</a>';
   }
+  function telLien(num) {
+    const n = String(num || '');
+    const compact = n.replace(/[^\d+]/g, '');
+    return '<a href="tel:' + compact + '">' + esc(n) + '</a>';
+  }
   function battementMin() { return reglages.battement ? Number(reglages.battement.supplement_min || 0) : 30; }
 
   // ================= AUTH =================
@@ -224,10 +229,15 @@
     const body = document.createElement('div');
     body.innerHTML =
       '<h2>' + esc(r.nom_presta || 'Autre') + ' ' + badge(r) + '</h2>' +
-      infoLigne('Cliente', esc(r.prenom) + ' &middot; ' + instaLien(r.instagram) + ' &middot; ' + esc(r.telephone)) +
+      infoLigne('Cliente', esc(r.prenom) + ' &middot; ' + instaLien(r.instagram) + ' &middot; ' + telLien(r.telephone)) +
       infoLigne('Meches', r.avec_meches ? 'Avec meches' : 'Sans meches') +
       infoLigne('Taille / Longueur', cap(r.taille) + ' / ' + cap(r.longueur)) +
       (r.options && r.options.length ? infoLigne('Options', r.options.map(function (o) { return esc(o.nom); }).join(', ')) : '') +
+      '<details style="margin:10px 0"><summary style="cursor:pointer;color:var(--brun);font-weight:500">Modifier les infos cliente</summary>' +
+      '<label class="field">Prenom</label><input type="text" id="ed-prenom" value="' + esc(r.prenom) + '" />' +
+      '<label class="field">Instagram</label><input type="text" id="ed-insta" value="' + esc(r.instagram) + '" />' +
+      '<label class="field">Telephone</label><input type="text" id="ed-tel" value="' + esc(r.telephone) + '" />' +
+      '<button class="btn btn-sm mt" id="ed-save">Enregistrer les infos</button></details>' +
       (r.est_autre && r.commentaire ? infoLigne('Commentaire', esc(r.commentaire)) : '') +
       infoLigne('Creneau', r.date_rdv ? (C.formatDateFR(r.date_rdv) + (r.heure_debut ? ' a ' + r.heure_debut.slice(0, 5) : '')) : 'Non defini') +
       infoLigne('Duree bloquee', r.duree_bloc_min ? C.minToLabel(r.duree_bloc_min) : 'Non definie') +
@@ -254,6 +264,17 @@
       '<button class="btn btn-ghost btn-block mt" id="m-replan">Replanifier le creneau</button>';
 
     const modal = ouvrirModal(body);
+
+    $('#ed-save', body).addEventListener('click', async function () {
+      const patch = {
+        prenom: $('#ed-prenom', body).value.trim(),
+        instagram: $('#ed-insta', body).value.trim().replace(/^@/, ''),
+        telephone: $('#ed-tel', body).value.trim()
+      };
+      const { error } = await sb.from('reservations').update(patch).eq('id', r.id);
+      if (error) { console.error(error); toast('Erreur.'); return; }
+      toast('Infos cliente mises a jour.'); fermerModal(modal); chargerCRM();
+    });
 
     function recalcTotal() {
       const base = Number($('#m-facture', body).value) || 0;
@@ -493,6 +514,8 @@
         rgPrixDuree('longueur_court', 'Court') + rgPrixDuree('longueur_moyen', 'Moyen') + rgPrixDuree('longueur_long', 'Long')) +
       rgSection('battement', 'Battement entre deux rendez-vous',
         '<label class="field">Duree (min)</label><input type="number" data-cle="battement" data-champ="min" value="' + (reglages.battement ? (reglages.battement.supplement_min != null ? reglages.battement.supplement_min : 0) : 30) + '" />') +
+      rgSection('visibilite', 'Visibilite des creneaux (cliente)',
+        '<label class="field">Nombre de semaines affichees a la cliente</label><input type="number" min="1" max="12" data-cle="visibilite_semaines" data-champ="min" value="' + (reglages.visibilite_semaines ? (reglages.visibilite_semaines.supplement_min != null ? reglages.visibilite_semaines.supplement_min : 2) : 2) + '" />') +
       '<button class="btn btn-block mt" id="rg-save">Enregistrer</button>';
     const modal = ouvrirModal(body);
 
