@@ -215,7 +215,8 @@ textarea { min-height: 90px; resize: vertical; }
 .tab { flex: 1; white-space: nowrap; padding: 10px 14px; border-radius: 10px; text-align: center; cursor: pointer; font-weight: 500; color: var(--texte-doux); border: none; background: transparent; font-size: .92rem; }
 .tab.active { background: var(--brun); color: #fff; }
 
-.subtabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+.subtabs { display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; }
+.subtabs .subtab { flex: none; white-space: nowrap; }
 .subtab { padding: 7px 14px; border-radius: 20px; border: 1.5px solid var(--gris-rose); background: #fff; cursor: pointer; font-size: .85rem; color: var(--texte-doux); }
 .subtab.active { background: var(--creme); border-color: var(--brun-clair); color: var(--brun-fonce); font-weight: 600; }
 
