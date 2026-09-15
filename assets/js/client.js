@@ -268,17 +268,6 @@
     });
   }
 
-  async function choisirDatePrecise(dateStr) {
-    if (!dateStr) return;
-    try {
-      const occ = await C.occupantsDuJour(dateStr);
-      const slots = C.creneauxDisponibles(dateStr, state.dureeEstimee, state.dureeBloc, horairesCache, exceptionsCache, occ);
-      state.pinnedDay = { date: dateStr, slots: slots };
-      state.openDate = dateStr;
-      renderJours();
-    } catch (e) { console.error(e); toast('Erreur sur cette date.'); }
-  }
-
   // ---------- Validation telephone ----------
   function telValide(valeur) { const net = valeur.replace(/[\s.\-()]/g, ''); return /^(?:\+33|0)[1-9]\d{8}$/.test(net); }
 
@@ -375,14 +364,6 @@
     $('#btn-to-creneau').addEventListener('click', function () { showPage('page-creneau'); setStep(2); chargerJoursDispo(); });
     $('#btn-back-presta').addEventListener('click', function () { showPage('page-presta'); setStep(1); });
 
-    $('#btn-choisir-date').addEventListener('click', function () {
-      const inp = $('#date-rdv');
-      inp.classList.toggle('hidden');
-      inp.min = C.todayISO();
-      inp.max = addDays(C.todayISO(), state.horizonDays || (VISIBILITE_DEFAUT * 7));
-      if (!inp.classList.contains('hidden')) inp.focus();
-    });
-    $('#date-rdv').addEventListener('change', function () { choisirDatePrecise(this.value); });
     $('#btn-plus-dispo').addEventListener('click', function () { state.visibleN += VISIBLE_STEP; renderJours(); });
 
     $('#btn-to-coord').addEventListener('click', function () { showPage('page-coord'); setStep(3); });
